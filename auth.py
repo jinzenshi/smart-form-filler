@@ -1,0 +1,193 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+用户认证模块
+"""
+
+from fastapi import HTTPException, Depends, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
+from models import User, SessionLocal, OperationLog
+from typing import Optional
+import secrets
+import hashlib
+import hmac
+from datetime import datetime, timedelta
+
+# 简单的密码加密（生产环境建议使用更安全的方法）
+SECRET_KEY = "your-secret-key-change-in-production"
+security = HTTPBearer()
+
+def get_db():
+    """获取数据库会话"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def hash_password(password: str) -> str:
+    """加密密码"""
+    # 使用HMAC-SHA256加密
+    return hmac.new(SECRET_KEY.encode(), password.encode(), hashlib.sha256).hexdigest()
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """验证密码"""
+    return hash_password(plain_password) == hashed_password
+
+def create_user(db: Session, username: str, password: str) -> User:
+    """创建用户"""
+    # 检查用户名和密码长度
+    if len(username) < 3 or len(password) < 3:
+        raise HTTPException(
+            status_code=400,
+            detail="用户名和密码必须至少3个字符"
+        )
+
+    # 检查用户是否已存在
+    existing_user = db.query(User).filter(User.username == username).first()
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="用户名已存在"
+        )
+
+    # 创建用户
+    hashed_pwd = hash_password(password)
+    user = User(username=username, password=hashed_pwd)
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
+    """验证用户"""
+    user = db.query(User).filter(User.username == username).first()
+    if not user:
+        return None
+    if not verify_password(password, user.password):
+        return None
+
+    # 检查账号是否过期（仅对临时账号）
+    if user.expires_at and user.expires_at < datetime.utcnow():
+        return None
+
+    return user
+
+def check_user_expired(user: User) -> bool:
+    """检查用户是否过期"""
+    if not user.expires_at:
+        return False  # 永不过期（如管理员）
+    return user.expires_at < datetime.utcnow()
+
+def generate_temporary_username(db: Session) -> str:
+    """生成唯一的临时用户名"""
+    import string
+    import random
+
+    while True:
+        # 生成8位随机用户名：temp_ + 4位随机字符
+        suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
+        username = f"temp_{suffix}"
+
+        # 检查是否已存在
+        if not db.query(User).filter(User.username == username).first():
+            return username
+
+def generate_temporary_password(length: int = 10) -> str:
+    """生成随机密码"""
+    import string
+    import random
+
+    # 包含大小写字母、数字和常用符号
+    characters = string.ascii_letters + string.digits + "!@#$%^&*"
+    return ''.join(random.choices(characters, k=length))
+
+def create_temporary_account(db: Session, days_valid: int = 7) -> dict:
+    """创建临时账号"""
+    username = generate_temporary_username(db)
+    password = generate_temporary_password()
+    expires_at = datetime.utcnow() + timedelta(days=days_valid)
+
+    hashed_pwd = hash_password(password)
+    user = User(
+        username=username,
+        password=hashed_pwd,
+        expires_at=expires_at,
+        is_temporary=True,
+        is_admin=False
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return {
+        "username": username,
+        "password": password,
+        "expires_at": expires_at,
+        "days_valid": days_valid
+    }
+
+def log_operation(db: Session, username: str, operation: str, details: str = None,
+                  submitted_data: dict = None, ip_address: str = None, status: str = 'success'):
+    """记录操作日志"""
+    import json
+
+    log = OperationLog(
+        username=username,
+        operation=operation,
+        details=details,
+        submitted_data=json.dumps(submitted_data, ensure_ascii=False) if submitted_data else None,
+        ip_address=ip_address,
+        status=status
+    )
+    db.add(log)
+    db.commit()
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security),
+                    db: Session = Depends(get_db)) -> User:
+    """获取当前用户"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="无效的认证凭据",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        # 简单的token验证（生产环境应使用JWT）
+        token = credentials.credentials
+        if not token or len(token) < 3:
+            raise credentials_exception
+
+        # token格式: username:timestamp:random
+        parts = token.split(':')
+        if len(parts) != 3:
+            raise credentials_exception
+
+        username = parts[0]
+        user = db.query(User).filter(User.username == username).first()
+
+        if user is None:
+            raise credentials_exception
+
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Token验证错误: {e}")
+        raise credentials_exception
+
+def is_admin(user: User = Depends(get_current_user)) -> User:
+    """检查是否为管理员"""
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=403,
+            detail="需要管理员权限"
+        )
+    return user
+
+def generate_token(username: str) -> str:
+    """生成简单的token"""
+    timestamp = str(int(datetime.utcnow().timestamp()))
+    random_str = secrets.token_hex(8)
+    return f"{username}:{timestamp}:{random_str}"
