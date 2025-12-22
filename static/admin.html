@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>后台管理 - 智能填表系统</title>
+  <style>
+    *{box-sizing: border-box}
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto;
+      margin: 0;
+      background: #f5f5f5;
+    }
+    header{
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1{
+      margin: 0;
+      font-size: 24px;
+    }
+    .user-info{
+      display: flex;
+      gap: 20px;
+      align-items: center;
+    }
+    .container{
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+    .card{
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .card h2{
+      margin-top: 0;
+      color: #333;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 10px;
+    }
+    .stats{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+    .stat-box{
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .stat-box h3{
+      margin: 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    .stat-box .number{
+      font-size: 32px;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+    table{
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td{
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    th{
+      background: #f8f9fa;
+      font-weight: 600;
+      color: #333;
+    }
+    tr:hover{
+      background: #f8f9fa;
+      cursor: pointer;
+    }
+    .modal{
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 2000;
+    }
+    .modal.active{
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .modal-content{
+      background: white;
+      border-radius: 10px;
+      padding: 30px;
+      max-width: 800px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    .modal-header{
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #667eea;
+    }
+    .modal-header h3{
+      margin: 0;
+      color: #333;
+    }
+    .close-modal{
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: #999;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .close-modal:hover{
+      color: #333;
+    }
+    .data-field{
+      margin-bottom: 15px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 5px;
+    }
+    .data-field label{
+      font-weight: 600;
+      color: #667eea;
+      margin-bottom: 5px;
+      display: block;
+    }
+    .data-field pre{
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: inherit;
+      font-size: 14px;
+    }
+    .filter-box{
+      margin-bottom: 15px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 5px;
+    }
+    .filter-box input, .filter-box select{
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 14px;
+      width: 200px;
+      margin-right: 10px;
+    }
+    .filter-box button{
+      padding: 8px 16px;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .filter-box button:hover{
+      background: #5568d3;
+    }
+    .status-badge{
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status-success{
+      background: #d4edda;
+      color: #155724;
+    }
+    .status-failed{
+      background: #f8d7da;
+      color: #721c24;
+    }
+    .btn{
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: transform 0.2s;
+    }
+    .btn:hover{
+      transform: translateY(-2px);
+    }
+    .btn-danger{
+      background: #dc3545;
+    }
+    .logout{
+      color: white;
+      text-decoration: none;
+      padding: 8px 16px;
+      border: 1px solid white;
+      border-radius: 5px;
+      transition: background 0.3s;
+    }
+    .logout:hover{
+      background: rgba(255,255,255,0.2);
+    }
+  </style>
+  <script>
+    // 检查登录状态
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username');
+    const isAdmin = localStorage.getItem('is_admin') === 'true';
+
+    console.log('🔑 Token:', token);
+    console.log('👤 Username:', username);
+    console.log('🔐 Is Admin:', isAdmin);
+    console.log('🔐 is_admin value:', localStorage.getItem('is_admin'));
+    console.log('🔐 is_admin === "true":', localStorage.getItem('is_admin') === 'true');
+
+    if (!token) {
+      console.log('❌ No token found, redirecting to login');
+      alert('请先登录');
+      window.location.href = '/login';
+    } else if (!isAdmin) {
+      console.log('❌ Not admin, redirecting to home');
+      alert('需要管理员权限');
+      window.location.href = '/';
+    } else {
+      console.log('✅ Admin access granted');
+    }
+
+    async function fetchStats() {
+      console.log('📊 Fetching stats with token:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
+      try {
+        const res = await fetch('/api/admin/stats', {
+          headers: {'Authorization': `Bearer ${token}`}
+        });
+        console.log('📊 Stats response status:', res.status);
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('获取统计失败:', errorText);
+          alert(`获取统计失败: ${errorText}`);
+          return;
+        }
+
+        const data = await res.json();
+
+        document.getElementById('totalUsers').textContent = data.total_users;
+        document.getElementById('temporaryAccounts').textContent = data.temporary_accounts || 0;
+        document.getElementById('expiredAccounts').textContent = data.expired_accounts || 0;
+        document.getElementById('totalOperations').textContent = data.total_operations;
+        document.getElementById('successfulOps').textContent = data.successful_operations;
+        document.getElementById('failedOps').textContent = data.failed_operations;
+        document.getElementById('pendingFeedbacks').textContent = data.pending_feedbacks || 0;
+      } catch (error) {
+        console.error('获取统计失败:', error);
+        alert(`获取统计失败: ${error.message}`);
+      }
+    }
+
+    async function fetchUsers() {
+      try {
+        const res = await fetch('/api/admin/users', {
+          headers: {'Authorization': `Bearer ${token}`}
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('获取用户列表失败:', errorText);
+          alert(`获取用户列表失败: ${errorText}`);
+          return;
+        }
+
+        const users = await res.json();
+
+        const tbody = document.getElementById('usersTableBody');
+        if (users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #999;">暂无用户</td></tr>';
+        } else {
+          tbody.innerHTML = users.map(user => `
+            <tr>
+              <td>${user.id}</td>
+              <td>${user.username}</td>
+              <td>${user.is_admin ? '是' : '否'}</td>
+              <td>${new Date(user.created_at).toLocaleString()}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('获取用户列表失败:', error);
+        alert(`获取用户列表失败: ${error.message}`);
+      }
+    }
+
+    async function fetchLogs() {
+      const usernameFilter = document.getElementById('filterUsername').value;
+      const operationFilter = document.getElementById('filterOperation').value;
+
+      let url = '/api/admin/logs?limit=100';
+      if (usernameFilter) url += `&username=${encodeURIComponent(usernameFilter)}`;
+      if (operationFilter) url += `&operation=${encodeURIComponent(operationFilter)}`;
+
+      try {
+        const res = await fetch(url, {
+          headers: {'Authorization': `Bearer ${token}`}
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('获取日志失败:', errorText);
+          alert(`获取日志失败: ${errorText}`);
+          return;
+        }
+
+        const logs = await res.json();
+
+        const tbody = document.getElementById('logsTableBody');
+        if (logs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #999;">暂无日志</td></tr>';
+        } else {
+          tbody.innerHTML = logs.map(log => {
+            const hasData = log.submitted_data && Object.keys(log.submitted_data).length > 0;
+            return `
+              <tr onclick="showLogDetails(${log.id}, ${JSON.stringify(log).replace(/"/g, '&quot;')})">
+                <td>${log.id}</td>
+                <td>${log.username}</td>
+                <td>${log.operation}</td>
+                <td>${log.details || '-'}</td>
+                <td>${log.ip_address || '-'}</td>
+                <td>
+                  <span class="status-badge status-${log.status}">
+                    ${log.status === 'success' ? '成功' : '失败'}
+                  </span>
+                </td>
+                <td>${new Date(log.created_at).toLocaleString()}</td>
+                <td>${hasData ? '📄' : ''}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (error) {
+        console.error('获取日志失败:', error);
+        alert(`获取日志失败: ${error.message}`);
+      }
+    }
+
+    function showLogDetails(logId, logData) {
+      const log = typeof logData === 'string' ? JSON.parse(logData.replace(/&quot;/g, '"')) : logData;
+      const modal = document.getElementById('logModal');
+      const modalContent = document.getElementById('modalContent');
+
+      let content = `
+        <div class="modal-header">
+          <h3>操作详情 - ID: ${log.id}</h3>
+          <button class="close-modal" onclick="closeModal()">&times;</button>
+        </div>
+      `;
+
+      // 基本信息
+      content += `
+        <div class="data-field">
+          <label>基本信息</label>
+          <pre>用户名: ${log.username}
+操作: ${log.operation}
+状态: ${log.status}
+时间: ${new Date(log.created_at).toLocaleString()}
+IP: ${log.ip_address || '-'}</pre>
+        </div>
+      `;
+
+      // 详细信息
+      if (log.details) {
+        content += `
+          <div class="data-field">
+            <label>详细信息</label>
+            <pre>${log.details}</pre>
+          </div>
+        `;
+      }
+
+      // 提交数据
+      if (log.submitted_data) {
+        content += `
+          <div class="data-field">
+            <label>提交数据</label>
+            <pre>${JSON.stringify(log.submitted_data, null, 2)}</pre>
+          </div>
+        `;
+
+        // 如果有个人信息预览，特殊显示
+        if (log.submitted_data.user_info_preview) {
+          content += `
+            <div class="data-field">
+              <label>个人信息预览 (${log.submitted_data.user_info_length} 字符)</label>
+              <pre>${log.submitted_data.user_info_preview}</pre>
+            </div>
+          `;
+        }
+      }
+
+      modalContent.innerHTML = content;
+      modal.classList.add('active');
+    }
+
+    async function fetchFeedbacks() {
+      const typeFilter = document.getElementById('filterFeedbackType').value;
+      const statusFilter = document.getElementById('filterFeedbackStatus').value;
+
+      let url = '/api/admin/feedbacks?limit=50';
+      if (typeFilter) url += `&feedback_type=${encodeURIComponent(typeFilter)}`;
+      if (statusFilter) url += `&status=${encodeURIComponent(statusFilter)}`;
+
+      try {
+        const res = await fetch(url, {
+          headers: {'Authorization': `Bearer ${token}`}
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('获取反馈失败:', errorText);
+          alert(`获取反馈失败: ${errorText}`);
+          return;
+        }
+
+        const feedbacks = await res.json();
+
+        const tbody = document.getElementById('feedbacksTableBody');
+        if (feedbacks.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #999;">暂无反馈</td></tr>';
+        } else {
+          tbody.innerHTML = feedbacks.map(f => {
+            const typeNames = {
+              'suggestion': '功能建议',
+              'bug': 'Bug报告',
+              'ux': '用户体验',
+              'performance': '性能问题',
+              'other': '其他'
+            };
+            const statusNames = {
+              'pending': '待处理',
+              'processing': '处理中',
+              'resolved': '已解决',
+              'closed': '已关闭'
+            };
+            return `
+              <tr>
+                <td>${f.id}</td>
+                <td>${f.username}</td>
+                <td>${typeNames[f.feedback_type] || f.feedback_type}</td>
+                <td>${'★'.repeat(f.rating)}${'☆'.repeat(5 - f.rating)}</td>
+                <td>${f.title}</td>
+                <td>
+                  <span class="status-badge status-${f.status}">
+                    ${statusNames[f.status] || f.status}
+                  </span>
+                </td>
+                <td>${new Date(f.created_at).toLocaleString()}</td>
+                <td>
+                  <button class="btn" style="padding: 5px 10px; font-size: 12px; width: auto;" onclick="showFeedbackDetails(${f.id}, ${JSON.stringify(f).replace(/"/g, '&quot;')})">
+                    查看详情
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (error) {
+        console.error('获取反馈失败:', error);
+        alert(`获取反馈失败: ${error.message}`);
+      }
+    }
+
+    function showFeedbackDetails(feedbackId, feedbackData) {
+      const feedback = typeof feedbackData === 'string' ? JSON.parse(feedbackData.replace(/&quot;/g, '"')) : feedbackData;
+      const modal = document.getElementById('logModal');
+      const modalContent = document.getElementById('modalContent');
+
+      const typeNames = {
+        'suggestion': '功能建议',
+        'bug': 'Bug报告',
+        'ux': '用户体验',
+        'performance': '性能问题',
+        'other': '其他'
+      };
+      const statusNames = {
+        'pending': '待处理',
+        'processing': '处理中',
+        'resolved': '已解决',
+        'closed': '已关闭'
+      };
+
+      let content = `
+        <div class="modal-header">
+          <h3>反馈详情 - ID: ${feedback.id}</h3>
+          <button class="close-modal" onclick="closeModal()">&times;</button>
+        </div>
+      `;
+
+      content += `
+        <div class="data-field">
+          <label>基本信息</label>
+          <pre>用户: ${feedback.username}
+类型: ${typeNames[feedback.feedback_type] || feedback.feedback_type}
+评分: ${feedback.rating}/5星
+状态: ${statusNames[feedback.status] || feedback.status}
+提交时间: ${new Date(feedback.created_at).toLocaleString()}
+页面URL: ${feedback.page_url || '-'}</pre>
+        </div>
+      `;
+
+      content += `
+        <div class="data-field">
+          <label>标题</label>
+          <pre>${feedback.title}</pre>
+        </div>
+      `;
+
+      content += `
+        <div class="data-field">
+          <label>详细描述</label>
+          <pre>${feedback.description}</pre>
+        </div>
+      `;
+
+      if (feedback.contact_email) {
+        content += `
+          <div class="data-field">
+            <label>联系方式</label>
+            <pre>${feedback.contact_email}</pre>
+          </div>
+        `;
+      }
+
+      if (feedback.screenshot_path) {
+        content += `
+          <div class="data-field">
+            <label>截图</label>
+            <img src="/${feedback.screenshot_path}" style="max-width: 100%; border-radius: 5px;" onerror="this.style.display='none'">
+          </div>
+        `;
+      }
+
+      if (feedback.admin_reply) {
+        content += `
+          <div class="data-field">
+            <label>管理员回复</label>
+            <pre>${feedback.admin_reply}</pre>
+          </div>
+        `;
+      }
+
+      modalContent.innerHTML = content;
+      modal.classList.add('active');
+    }
+
+    async function createTempAccount() {
+      const daysValid = parseInt(document.getElementById('daysValid').value);
+      if (!daysValid || daysValid < 1) {
+        alert('请输入有效的天数（1-365）');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/temp-accounts', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: `days_valid=${daysValid}`
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          alert(`创建临时账号失败: ${errorText}`);
+          return;
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          // 显示账号信息
+          alert(`✅ 临时账号创建成功！\n\n用户名: ${data.account.username}\n密码: ${data.account.password}\n有效期: ${data.account.days_valid}天\n过期时间: ${new Date(data.account.expires_at).toLocaleString()}\n\n请复制保存账号信息！`);
+
+          // 刷新列表
+          fetchTempAccounts();
+          fetchStats();
+        }
+      } catch (error) {
+        console.error('创建临时账号失败:', error);
+        alert(`创建临时账号失败: ${error.message}`);
+      }
+    }
+
+    async function fetchTempAccounts() {
+      const showExpired = document.getElementById('showExpired').checked;
+      let url = '/api/admin/temp-accounts';
+      if (showExpired) {
+        url += '?include_expired=true';
+      }
+
+      try {
+        const res = await fetch(url, {
+          headers: {'Authorization': `Bearer ${token}`}
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('获取临时账号列表失败:', errorText);
+          alert(`获取临时账号列表失败: ${errorText}`);
+          return;
+        }
+
+        const accounts = await res.json();
+
+        const tbody = document.getElementById('tempAccountsTableBody');
+        if (accounts.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">暂无临时账号</td></tr>';
+        } else {
+          tbody.innerHTML = accounts.map(acc => {
+            const isExpired = acc.is_expired;
+            const daysRemaining = acc.days_remaining;
+
+            return `
+              <tr>
+                <td>
+                  <strong>${acc.username}</strong>
+                </td>
+                <td>${new Date(acc.created_at).toLocaleString()}</td>
+                <td>${acc.expires_at ? new Date(acc.expires_at).toLocaleString() : '-'}</td>
+                <td>${daysRemaining !== null ? daysRemaining : '-'}</td>
+                <td>
+                  <span class="status-badge ${isExpired ? 'status-failed' : 'status-success'}">
+                    ${isExpired ? '已过期' : '有效'}
+                  </span>
+                </td>
+                <td>
+                  <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deleteTempAccount('${acc.username}')">
+                    删除
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (error) {
+        console.error('获取临时账号列表失败:', error);
+        alert(`获取临时账号列表失败: ${error.message}`);
+      }
+    }
+
+    async function deleteTempAccount(username) {
+      if (!confirm(`确定要删除临时账号 "${username}" 吗？`)) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/temp-accounts/${username}`, {
+          method: 'DELETE',
+          headers: {'Authorization': `Bearer ${token}`}
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          alert(`删除临时账号失败: ${errorText}`);
+          return;
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          alert('临时账号已删除');
+          fetchTempAccounts();
+          fetchStats();
+        }
+      } catch (error) {
+        console.error('删除临时账号失败:', error);
+        alert(`删除临时账号失败: ${error.message}`);
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('logModal').classList.remove('active');
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
+      localStorage.removeItem('is_admin');
+      window.location.href = '/login';
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      fetchStats();
+      fetchUsers();
+      fetchLogs();
+      fetchFeedbacks();
+      fetchTempAccounts();
+
+      // 点击模态框背景关闭
+      const logModal = document.getElementById('logModal');
+      if (logModal) {
+        logModal.addEventListener('click', (e) => {
+          if (e.target.id === 'logModal') {
+            closeModal();
+          }
+        });
+      }
+
+      // 每30秒刷新一次
+      setInterval(() => {
+        fetchStats();
+        fetchLogs();
+        fetchFeedbacks();
+        fetchTempAccounts();
+      }, 30000);
+    });
+  </script>
+</head>
+<body>
+  <header>
+    <h1>🎛️ 后台管理系统</h1>
+    <div class="user-info">
+      <span>👤 管理员: ${username}</span>
+      <a href="/" class="btn">返回主页</a>
+      <a href="#" class="logout" onclick="logout()">退出登录</a>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- 统计信息 -->
+    <div class="card">
+      <h2>📊 统计概览</h2>
+      <div class="stats">
+        <div class="stat-box">
+          <h3>总用户数</h3>
+          <div class="number" id="totalUsers">-</div>
+        </div>
+        <div class="stat-box">
+          <h3>临时账号</h3>
+          <div class="number" id="temporaryAccounts">-</div>
+        </div>
+        <div class="stat-box">
+          <h3>已过期</h3>
+          <div class="number" id="expiredAccounts">-</div>
+        </div>
+        <div class="stat-box">
+          <h3>总操作数</h3>
+          <div class="number" id="totalOperations">-</div>
+        </div>
+        <div class="stat-box">
+          <h3>成功操作</h3>
+          <div class="number" id="successfulOps">-</div>
+        </div>
+        <div class="stat-box">
+          <h3>失败操作</h3>
+          <div class="number" id="failedOps">-</div>
+        </div>
+        <div class="stat-box">
+          <h3>待处理反馈</h3>
+          <div class="number" id="pendingFeedbacks">-</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 用户列表 -->
+    <div class="card">
+      <h2>👥 用户列表</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>用户名</th>
+            <th>管理员</th>
+            <th>注册时间</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody">
+          <tr>
+            <td colspan="4" style="text-align: center; color: #999;">加载中...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 临时账号管理 -->
+    <div class="card">
+      <h2>🔑 临时账号管理</h2>
+
+      <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <input id="daysValid" type="number" value="7" min="1" max="365" style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; width: 100px;">
+          <button class="btn" onclick="createTempAccount()">🎁 生成新账号</button>
+          <button class="btn" onclick="fetchTempAccounts()">🔄 刷新列表</button>
+          <label style="display: flex; align-items: center; gap: 5px; margin-left: auto; cursor: pointer;">
+            <input type="checkbox" id="showExpired" onchange="fetchTempAccounts()">
+            显示已过期账号
+          </label>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>用户名</th>
+            <th>创建时间</th>
+            <th>过期时间</th>
+            <th>剩余天数</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="tempAccountsTableBody">
+          <tr>
+            <td colspan="6" style="text-align: center; color: #999;">点击"刷新列表"加载数据</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 用户反馈 -->
+    <div class="card">
+      <h2>💬 用户反馈</h2>
+
+      <!-- 反馈筛选框 -->
+      <div class="filter-box">
+        <select id="filterFeedbackType">
+          <option value="">所有类型</option>
+          <option value="suggestion">功能建议</option>
+          <option value="bug">Bug报告</option>
+          <option value="ux">用户体验</option>
+          <option value="performance">性能问题</option>
+          <option value="other">其他</option>
+        </select>
+        <select id="filterFeedbackStatus">
+          <option value="">所有状态</option>
+          <option value="pending">待处理</option>
+          <option value="processing">处理中</option>
+          <option value="resolved">已解决</option>
+          <option value="closed">已关闭</option>
+        </select>
+        <button onclick="fetchFeedbacks()">应用筛选</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>用户</th>
+            <th>类型</th>
+            <th>评分</th>
+            <th>标题</th>
+            <th>状态</th>
+            <th>提交时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="feedbacksTableBody">
+          <tr>
+            <td colspan="8" style="text-align: center; color: #999;">加载中...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 操作日志 -->
+    <div class="card">
+      <h2>📝 操作日志</h2>
+
+      <!-- 筛选框 -->
+      <div class="filter-box">
+        <input id="filterUsername" type="text" placeholder="筛选用户名">
+        <select id="filterOperation">
+          <option value="">所有操作</option>
+          <option value="注册">注册</option>
+          <option value="登录">登录</option>
+          <option value="提交文档处理">提交文档处理</option>
+          <option value="提交反馈">提交反馈</option>
+          <option value="文档处理失败">文档处理失败</option>
+        </select>
+        <button onclick="fetchLogs()">应用筛选</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>用户名</th>
+            <th>操作</th>
+            <th>详情</th>
+            <th>IP</th>
+            <th>状态</th>
+            <th>时间</th>
+            <th>数据</th>
+          </tr>
+        </thead>
+        <tbody id="logsTableBody">
+          <tr>
+            <td colspan="8" style="text-align: center; color: #999;">加载中...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 详情模态框 -->
+    <div id="logModal" class="modal">
+      <div class="modal-content">
+        <div id="modalContent"></div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

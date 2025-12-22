@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>意见反馈 - 智能填表系统</title>
+  <style>
+    *{box-sizing: border-box}
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto;
+      margin: 0;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+    .container{
+      background: white;
+      border-radius: 15px;
+      padding: 40px;
+      max-width: 600px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1{
+      text-align: center;
+      margin-bottom: 30px;
+      color: #333;
+    }
+    .form-group{
+      margin-bottom: 20px;
+    }
+    label{
+      display: block;
+      margin-bottom: 8px;
+      color: #555;
+      font-weight: 500;
+    }
+    select, input, textarea{
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e1e5e9;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.3s;
+    }
+    select:focus, input:focus, textarea:focus{
+      outline: none;
+      border-color: #667eea;
+    }
+    textarea{
+      min-height: 120px;
+      resize: vertical;
+    }
+    .rating-group{
+      display: flex;
+      gap: 10px;
+      margin-top: 5px;
+    }
+    .star{
+      font-size: 30px;
+      color: #ddd;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .star:hover, .star.active{
+      color: #ffd700;
+    }
+    .btn{
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .btn:hover{
+      transform: translateY(-2px);
+    }
+    .btn:disabled{
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .message{
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      text-align: center;
+      display: none;
+    }
+    .message.success{
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .message.error{
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    .back-link{
+      text-align: center;
+      margin-top: 20px;
+    }
+    .back-link a{
+      color: #667eea;
+      text-decoration: none;
+    }
+    .back-link a:hover{
+      text-decoration: underline;
+    }
+    .required{
+      color: #e74c3c;
+    }
+  </style>
+  <script>
+    // 检查登录状态
+    const token = localStorage.getItem('token');
+    const username = localStorage.getItem('username');
+
+    if (!token) {
+      alert('请先登录');
+      window.location.href = '/login';
+    }
+
+    let selectedRating = 0;
+
+    function setRating(rating) {
+      selectedRating = rating;
+      const stars = document.querySelectorAll('.star');
+      stars.forEach((star, index) => {
+        if (index < rating) {
+          star.classList.add('active');
+        } else {
+          star.classList.remove('active');
+        }
+      });
+    }
+
+    async function submitFeedback(e) {
+      e.preventDefault();
+
+      const feedbackType = document.getElementById('feedbackType').value;
+      const title = document.getElementById('title').value.trim();
+      const description = document.getElementById('description').value.trim();
+      const contactEmail = document.getElementById('contactEmail').value.trim();
+      const screenshot = document.getElementById('screenshot').files[0];
+
+      if (!feedbackType || !title || !description || selectedRating === 0) {
+        showMessage('请填写所有必填项', 'error');
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append('feedback_type', feedbackType);
+      fd.append('rating', selectedRating.toString());
+      fd.append('title', title);
+      fd.append('description', description);
+      fd.append('contact_email', contactEmail);
+      fd.append('auth_token', token);
+      if (screenshot) {
+        fd.append('screenshot', screenshot);
+      }
+
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.textContent = '提交中...';
+
+      try {
+        const res = await fetch('/api/feedback', {
+          method: 'POST',
+          body: fd
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          showMessage(data.message, 'success');
+          document.getElementById('feedbackForm').reset();
+          setRating(0);
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          throw new Error(data.error || '提交失败');
+        }
+      } catch (err) {
+        showMessage('提交失败: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '提交反馈';
+      }
+    }
+
+    function showMessage(text, type) {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.className = `message ${type}`;
+      messageDiv.style.display = 'block';
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('feedbackForm').addEventListener('submit', submitFeedback);
+
+      // 为星星添加点击事件
+      const stars = document.querySelectorAll('.star');
+      stars.forEach((star, index) => {
+        star.addEventListener('click', () => setRating(index + 1));
+        star.addEventListener('mouseenter', () => setRating(index + 1));
+      });
+
+      document.getElementById('ratingContainer').addEventListener('mouseleave', () => {
+        setRating(selectedRating);
+      });
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>💬 意见反馈</h1>
+    <p style="text-align: center; color: #666; margin-bottom: 30px;">
+      您的意见对我们非常重要，请告诉我们您的想法和建议
+    </p>
+
+    <form id="feedbackForm">
+      <div class="form-group">
+        <label>反馈类型 <span class="required">*</span></label>
+        <select id="feedbackType" required>
+          <option value="">请选择反馈类型</option>
+          <option value="suggestion">功能建议</option>
+          <option value="bug">Bug报告</option>
+          <option value="ux">用户体验</option>
+          <option value="performance">性能问题</option>
+          <option value="other">其他</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>总体评分 <span class="required">*</span></label>
+        <div class="rating-group" id="ratingContainer">
+          <span class="star" data-rating="1">★</span>
+          <span class="star" data-rating="2">★</span>
+          <span class="star" data-rating="3">★</span>
+          <span class="star" data-rating="4">★</span>
+          <span class="star" data-rating="5">★</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>标题 <span class="required">*</span></label>
+        <input id="title" type="text" placeholder="简要描述您的问题或建议" required>
+      </div>
+
+      <div class="form-group">
+        <label>详细描述 <span class="required">*</span></label>
+        <textarea id="description" placeholder="请详细描述您遇到的问题或建议，包括具体的操作步骤..." required></textarea>
+      </div>
+
+      <div class="form-group">
+        <label>联系方式（可选）</label>
+        <input id="contactEmail" type="email" placeholder="邮箱或微信号，方便我们联系您">
+      </div>
+
+      <div class="form-group">
+        <label>截图（可选）</label>
+        <input id="screenshot" type="file" accept="image/*">
+        <small style="color: #666; font-size: 14px;">
+          如果是Bug报告，建议上传截图帮助我们更好地理解问题
+        </small>
+      </div>
+
+      <button id="submitBtn" type="submit" class="btn">提交反馈</button>
+
+      <div id="message" class="message"></div>
+    </form>
+
+    <div class="back-link">
+      <a href="/">← 返回主页</a>
+    </div>
+  </div>
+</body>
+</html>

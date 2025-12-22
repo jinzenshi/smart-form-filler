@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录 - 智能填表助手</title>
+  <style>
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto;
+      max-width: 400px;
+      margin: 100px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .login-card{
+      background: white;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    h1{
+      text-align: center;
+      margin-bottom: 30px;
+      color: #333;
+    }
+    label{
+      display: block;
+      margin: 20px 0 8px;
+      color: #555;
+      font-weight: 500;
+    }
+    input{
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+    input:focus{
+      outline: none;
+      border-color: #667eea;
+    }
+    button{
+      width: 100%;
+      padding: 12px;
+      margin-top: 30px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    button:hover{
+      transform: translateY(-2px);
+    }
+    button:disabled{
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .message{
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 5px;
+      text-align: center;
+      display: none;
+    }
+    .message.error{
+      background: #fee;
+      color: #c33;
+      border: 1px solid #fcc;
+    }
+    .message.success{
+      background: #efe;
+      color: #3c3;
+      border: 1px solid #cfc;
+    }
+    .hint{
+      margin-top: 20px;
+      text-align: center;
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+  <script>
+    // 检查是否已登录
+    const token = localStorage.getItem('token');
+    if (token) {
+      window.location.href = '/';
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const messageDiv = document.getElementById('message');
+      const btn = document.getElementById('submit');
+
+      // 验证输入
+      if (!username || !password) {
+        showMessage('请输入用户名和密码', 'error');
+        return;
+      }
+
+      if (username.length < 3 || password.length < 3) {
+        showMessage('用户名和密码必须至少3个字符', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '登录中...';
+
+      try {
+        // 尝试登录
+        const loginResponse = await fetch('/api/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+          body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+        });
+
+        const loginData = await loginResponse.json();
+
+        if (loginData.success) {
+          // 登录成功，保存token
+          localStorage.setItem('token', loginData.token);
+          localStorage.setItem('username', loginData.username);
+          localStorage.setItem('is_admin', loginData.is_admin);
+
+          showMessage('登录成功，正在跳转...', 'success');
+
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1000);
+        } else {
+          // 登录失败
+          showMessage(loginData.message || '登录失败，请检查用户名和密码', 'error');
+        }
+      } catch (error) {
+        showMessage('网络错误，请重试', 'error');
+        console.error(error);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '登录';
+      }
+    }
+
+    function showMessage(text, type) {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.className = `message ${type}`;
+      messageDiv.style.display = 'block';
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('loginForm').addEventListener('submit', handleSubmit);
+    });
+  </script>
+</head>
+<body>
+  <div class="login-card">
+    <h1>🔐 智能填表系统</h1>
+    <form id="loginForm">
+      <label>用户名</label>
+      <input id="username" type="text" placeholder="请输入用户名（≥3字符）" required>
+
+      <label>密码</label>
+      <input id="password" type="password" placeholder="请输入密码（≥3字符）" required>
+
+      <button id="submit" type="submit">登录</button>
+
+      <div id="message" class="message"></div>
+    </form>
+
+    <div class="hint">
+      💡 请使用管理员提供的临时账号登录<br>
+      默认有效期为7天
+    </div>
+  </div>
+</body>
+</html>

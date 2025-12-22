@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: smart-form-filler
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server_with_auth:app_instance --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ARK_API_KEY
+        sync: false
+      - key: PORT
+        value: 10000
+    healthCheckPath: /
+    disk:
+      name: uploads
+      mountPath: /app/uploads
+      sizeGB: 1
