@@ -67,7 +67,7 @@
 | **Root Directory** | 留空（如果项目在根目录） |
 | **Runtime** | `Python 3` |
 | **Build Command** | `pip install -r requirements.txt` |
-| **Start Command** | `uvicorn server_with_auth:app_instance --host 0.0.0.0 --port $PORT` |
+| **Start Command** | `python -m uvicorn server_with_auth:app_instance --host 0.0.0.0 --port $PORT` |
 
 ### 步骤 5：配置环境变量
 

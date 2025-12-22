@@ -63,21 +63,26 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
     """初始化数据库"""
-    Base.metadata.create_all(bind=engine)
-    # 创建默认管理员账户
-    db = SessionLocal()
     try:
-        admin = db.query(User).filter(User.username == 'admin').first()
-        if not admin:
-            # 导入加密函数
-            from auth import hash_password
-            admin_user = User(
-                username='admin',
-                password=hash_password('admin123'),
-                is_admin=True
-            )
-            db.add(admin_user)
-            db.commit()
-            print("✅ 默认管理员账户创建成功: admin / admin123")
-    finally:
-        db.close()
+        Base.metadata.create_all(bind=engine)
+        # 创建默认管理员账户
+        db = SessionLocal()
+        try:
+            admin = db.query(User).filter(User.username == 'admin').first()
+            if not admin:
+                # 导入加密函数
+                from auth import hash_password
+                admin_user = User(
+                    username='admin',
+                    password=hash_password('admin123'),
+                    is_admin=True
+                )
+                db.add(admin_user)
+                db.commit()
+                print("✅ 默认管理员账户创建成功: admin / admin123")
+        except Exception as e:
+            print(f"⚠️ 创建管理员账户失败: {e}")
+        finally:
+            db.close()
+    except Exception as e:
+        print(f"⚠️ 数据库初始化失败: {e}")

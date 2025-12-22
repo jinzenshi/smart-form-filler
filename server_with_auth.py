@@ -20,6 +20,14 @@ from auth import (
 
 app = FastAPI(title="智能填表系统")
 
+# 应用启动事件
+@app.on_event("startup")
+async def startup_event():
+    """应用启动时初始化数据库"""
+    print("🚀 启动中...")
+    init_db()
+    print("✅ 启动完成！")
+
 # 全局中间件：记录请求（生产环境可移除）
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -489,4 +497,11 @@ app_instance = app
 if __name__ == "__main__":
     import uvicorn
     port = int(os.environ.get("PORT", 8000))
-    uvicorn.run("server_with_auth:app_instance", host="0.0.0.0", port=port, reload=True)
+    uvicorn.run(
+        "server_with_auth:app_instance",
+        host="0.0.0.0",
+        port=port,
+        reload=False,
+        workers=1,
+        log_level="info"
+    )
