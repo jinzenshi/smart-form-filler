@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Request
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse, RedirectResponse
@@ -462,7 +462,7 @@ async def get_temp_accounts(
             "created_at": u.created_at.isoformat(),
             "expires_at": u.expires_at.isoformat() if u.expires_at else None,
             "is_expired": check_user_expired(u),
-            "days_remaining": max(0, (u.expires_at - datetime.utcnow()).days) if u.expires_at else None
+            "days_remaining": max(0, (u.expires_at - datetime.now(timezone.utc)).days) if u.expires_at else None
         }
         for u in accounts
     ]
