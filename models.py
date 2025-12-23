@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-数据库模型
+数据库模型 - Supabase PostgreSQL 版本
+支持从 SQLite 平滑迁移到 PostgreSQL
 """
 
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from datetime import datetime, timedelta
 import os
 
@@ -56,15 +58,42 @@ class Feedback(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
-# 数据库初始化
-DATABASE_URL = "sqlite:///./app.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# 数据库初始化 - 支持 PostgreSQL 和 SQLite
+def get_database_url():
+    """获取数据库连接 URL"""
+    # 优先使用环境变量中的 DATABASE_URL
+    if os.getenv("DATABASE_URL"):
+        return os.getenv("DATABASE_URL")
+
+    # 如果没有设置，则使用 Supabase PostgreSQL
+    return "postgresql://postgres:ZZSzzs996@@@db.mckoiztgjskrvueconqx.supabase.co:5432/postgres"
+
+DATABASE_URL = get_database_url()
+
+# 创建引擎 - 根据数据库类型选择配置
+if DATABASE_URL.startswith("postgresql"):
+    # PostgreSQL 配置 - 使用连接池优化性能
+    engine = create_engine(
+        DATABASE_URL,
+        pool_size=20,
+        max_overflow=30,
+        pool_pre_ping=True,
+        pool_recycle=3600,
+        echo=False  # 设置为 True 可以看到 SQL 日志
+    )
+else:
+    # SQLite 配置（向后兼容）
+    engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db():
     """初始化数据库"""
     try:
+        # 创建所有表
         Base.metadata.create_all(bind=engine)
+        print(f"✅ 数据库表创建成功！连接类型: {'PostgreSQL' if DATABASE_URL.startswith('postgresql') else 'SQLite'}")
+
         # 创建默认管理员账户
         db = SessionLocal()
         try:
@@ -80,9 +109,29 @@ def init_db():
                 db.add(admin_user)
                 db.commit()
                 print("✅ 默认管理员账户创建成功: admin / admin123")
+            else:
+                print("ℹ️ 管理员账户已存在")
         except Exception as e:
             print(f"⚠️ 创建管理员账户失败: {e}")
+            db.rollback()
         finally:
             db.close()
+
+        print("✅ 数据库初始化成功！")
     except Exception as e:
-        print(f"⚠️ 数据库初始化失败: {e}")
+        print(f"❌ 数据库初始化失败: {e}")
+        import traceback
+        traceback.print_exc()
+
+def get_db():
+    """获取数据库会话的依赖注入"""
+    """用于 FastAPI 依赖注入"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def close_db():
+    """关闭数据库连接"""
+    engine.dispose()
