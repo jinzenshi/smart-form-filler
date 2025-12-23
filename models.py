@@ -81,7 +81,7 @@ def get_database_url():
         return os.getenv("DATABASE_URL")
 
     # 如果没有设置，则使用全新项目的 Supabase PostgreSQL Session Pooler
-    return "postgresql://postgres:jinzenshi996@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
+    return "postgresql://postgres.rttgrvpsmltltegykcsw:zzszzs996@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
 
 DATABASE_URL = get_database_url()
 
