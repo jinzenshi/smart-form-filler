@@ -88,12 +88,14 @@ DATABASE_URL = get_database_url()
 # 创建引擎 - 根据数据库类型选择配置
 if DATABASE_URL.startswith("postgresql"):
     # PostgreSQL 配置 - 使用连接池优化性能
+    # 注意：ap-southeast-1 Session Pooler pool_size 较小，需要调整
     engine = create_engine(
         DATABASE_URL,
-        pool_size=20,
-        max_overflow=30,
+        pool_size=5,        # 减小连接池大小
+        max_overflow=5,     # 减小最大溢出
         pool_pre_ping=True,
-        pool_recycle=3600,
+        pool_recycle=1800,  # 缩短连接回收时间
+        pool_timeout=30,    # 设置连接超时
         echo=False  # 设置为 True 可以看到 SQL 日志
     )
 else:
