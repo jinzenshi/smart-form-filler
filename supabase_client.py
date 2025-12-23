@@ -9,12 +9,13 @@ import os
 from supabase import create_client, Client
 from datetime import datetime
 
-# Supabase 配置 - 注意：URL 不应该以斜杠结尾，让 SDK 自动处理
+# Supabase 配置 - 后端使用 service_role key 绕过 RLS 策略
 SUPABASE_URL = "https://mckoiztgjskrvueconqx.supabase.co"
-SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ja29penRnc2tydnVlY29ucXgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY4NjU4MDQ3MCwiZXhwIjoyMDAyMTU2NDcwfQ.LmJ7wLq7bX5K3zC8h3oV9YkGZ5c8h1j6t6r9e5v3z0"
+# 使用 service_role key 获得完整权限（绕过 RLS 策略）
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ja29penRnc2tydnVlY29ucXgiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNzY2NDUxMDA4LCJleHAiOjIwODIwMjcwMDh9.YvPTXnOnYSc8xdT888n4QU_Z30E7Xu7iwFOYVgvfw6s"
 
-# 创建 Supabase 客户端
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+# 创建 Supabase 客户端（使用 service_role key）
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 
 def upload_file_to_supabase(file_content: bytes, bucket_name: str, file_path: str, content_type: str = None) -> str:
     """
