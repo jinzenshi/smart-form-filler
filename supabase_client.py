@@ -9,10 +9,10 @@ import os
 from supabase import create_client, Client
 from datetime import datetime
 
-# Supabase 配置 - 后端使用 service_role key 绕过 RLS 策略
-SUPABASE_URL = "https://mckoiztgjskrvueconqx.supabase.co"
-# 使用 service_role key 获得完整权限（绕过 RLS 策略）
-SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ja29penRnc2tydnVlY29ucXgiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNzY2NDUxMDA4LCJleHAiOjIwODIwMjcwMDh9.YvPTXnOnYSc8xdT888n4QU_Z30E7Xu7iwFOYVgvfw6s"
+# Supabase 配置 - 全新项目
+SUPABASE_URL = "https://rttgrvpsmltltegykcsw.supabase.co"
+# 使用正确的 service_role key
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0dGdydnBzbWx0bHRlZ3lrY3N3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjQ5Njk2MSwiZXhwIjoyMDgyMDcyOTYxfQ.tGaGPpdQUcxbLHdCuohlf8ZjX781helCmEWihnxX7wo"
 
 # 创建 Supabase 客户端（使用 service_role key）
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
