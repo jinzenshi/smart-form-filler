@@ -66,8 +66,7 @@ def get_database_url():
         return os.getenv("DATABASE_URL")
 
     # 如果没有设置，则使用 Supabase PostgreSQL
-    # 注意：密码中的 @ 符号需要 URL 编码为 %40
-    return "postgresql://postgres:ZZSzzs996%40%40@db.mckoiztgjskrvueconqx.supabase.co:5432/postgres"
+    return "postgresql://postgres:jinzenshi996@db.mckoiztgjskrvueconqx.supabase.co:5432/postgres"
 
 DATABASE_URL = get_database_url()
 

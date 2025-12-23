@@ -13,9 +13,8 @@ services:
         value: doubao-seed-1-6-251015
 
       # PostgreSQL 数据库配置（Supabase）
-      # 注意：密码中的 @ 符号需要 URL 编码为 %40
       - key: DATABASE_URL
-        value: postgresql://postgres:ZZSzzs996%40%40@db.mckoiztgjskrvueconqx.supabase.co:5432/postgres
+        value: postgresql://postgres:jinzenshi996@db.mckoiztgjskrvueconqx.supabase.co:5432/postgres
 
       # 服务端口
       - key: PORT
