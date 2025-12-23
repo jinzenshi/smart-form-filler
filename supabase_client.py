@@ -13,6 +13,10 @@ from datetime import datetime
 SUPABASE_URL = "https://mckoiztgjskrvueconqx.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ja29penRnc2tydnVlY29ucXgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY4NjU4MDQ3MCwiZXhwIjoyMDAyMTU2NDcwfQ.LmJ7wLq7bX5K3zC8h3oV9YkGZ5c8h1j6t6r9e5v3z0"
 
+# 确保URL以斜杠结尾
+if not SUPABASE_URL.endswith('/'):
+    SUPABASE_URL = SUPABASE_URL + '/'
+
 # 创建 Supabase 客户端
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
 
@@ -30,20 +34,44 @@ def upload_file_to_supabase(file_content: bytes, bucket_name: str, file_path: st
         公共访问 URL
     """
     try:
+        # 上传文件到指定bucket
+        bucket = supabase.storage.from_(bucket_name)
+
+        # 构建文件选项
+        file_options = {}
+        if content_type:
+            file_options["content-type"] = content_type
+
         # 上传文件
-        response = supabase.storage.from_(bucket_name).upload(
+        response = bucket.upload(
             path=file_path,
             file=file_content,
-            file_options={"content-type": content_type} if content_type else {}
+            file_options=file_options
         )
 
-        # 获取公共 URL
-        public_url = supabase.storage.from_(bucket_name).get_public_url(file_path)
+        # 构建公共URL
+        # 格式: https://{project_ref}.supabase.co/storage/v1/object/public/{bucket_name}/{file_path}
+        project_ref = SUPABASE_URL.split('//')[1].split('.')[0]
+        public_url = f"{SUPABASE_URL}storage/v1/object/public/{bucket_name}/{file_path}"
 
+        print(f"✅ 文件上传成功: {public_url}")
         return public_url
+
     except Exception as e:
-        print(f"文件上传失败: {e}")
-        raise
+        error_msg = str(e)
+        print(f"❌ 文件上传失败: {error_msg}")
+
+        # 提供更详细的错误信息
+        if "signature verification failed" in error_msg or "Unauthorized" in error_msg:
+            print("\n💡 权限错误可能原因：")
+            print("   1. 存储桶需要设置为 Public（公共访问）")
+            print("   2. 存储桶需要配置 RLS 策略允许匿名用户上传")
+            print("\n📝 解决方案：")
+            print("   请登录 Supabase Dashboard → Storage → 选择bucket →")
+            print("   - 确保 'Public bucket' 选项已启用")
+            print("   - 在 'Policies' 中添加允许匿名用户 INSERT 和 SELECT 的策略")
+
+        raise Exception(f"文件上传失败: {error_msg}")
 
 def delete_file_from_supabase(bucket_name: str, file_path: str) -> bool:
     """
