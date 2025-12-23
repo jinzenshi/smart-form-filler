@@ -12,7 +12,7 @@ from typing import Optional
 import secrets
 import hashlib
 import hmac
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 # 简单的密码加密（生产环境建议使用更安全的方法）
 SECRET_KEY = "your-secret-key-change-in-production"
@@ -78,7 +78,8 @@ def check_user_expired(user: User) -> bool:
     """检查用户是否过期"""
     if not user.expires_at:
         return False  # 永不过期（如管理员）
-    return user.expires_at < datetime.utcnow()
+    # 使用 timezone-aware 的时间进行比较
+    return user.expires_at < datetime.now(timezone.utc)
 
 def generate_temporary_username(db: Session) -> str:
     """生成唯一的临时用户名"""
