@@ -58,6 +58,21 @@ class Feedback(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow)
 
+class FileStorage(Base):
+    """文件存储表"""
+    __tablename__ = 'file_storage'
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(50), nullable=False)  # 上传用户
+    file_type = Column(String(20), nullable=False)  # 文件类型：docx, user_info, screenshot
+    original_filename = Column(String(255), nullable=False)  # 原始文件名
+    file_path = Column(String(500), nullable=False)  # Supabase Storage 中的文件路径
+    public_url = Column(String(1000), nullable=False)  # 公共访问URL
+    file_size = Column(Integer, nullable=False)  # 文件大小（字节）
+    content_type = Column(String(100), nullable=True)  # MIME 类型
+    operation_log_id = Column(Integer, nullable=True)  # 关联的操作日志ID
+    created_at = Column(DateTime, default=datetime.utcnow)
+
 # 数据库初始化 - 支持 PostgreSQL 和 SQLite
 def get_database_url():
     """获取数据库连接 URL"""

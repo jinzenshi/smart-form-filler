@@ -698,6 +698,103 @@ IP: ${log.ip_address || '-'}</pre>
       }
     }
 
+    async function fetchFiles() {
+      const typeFilter = document.getElementById('filterFileType').value;
+      const usernameFilter = document.getElementById('filterFileUsername').value;
+
+      let url = '/api/admin/files?limit=100';
+      if (typeFilter) url += `&file_type=${encodeURIComponent(typeFilter)}`;
+      if (usernameFilter) url += `&username=${encodeURIComponent(usernameFilter)}`;
+
+      try {
+        const res = await fetch(url, {
+          headers: {'Authorization': `Bearer ${token}`}
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('获取文件列表失败:', errorText);
+          alert(`获取文件列表失败: ${errorText}`);
+          return;
+        }
+
+        const files = await res.json();
+
+        const tbody = document.getElementById('filesTableBody');
+        if (files.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #999;">暂无文件</td></tr>';
+        } else {
+          tbody.innerHTML = files.map(file => {
+            const typeNames = {
+              'docx': 'DOCX文档',
+              'user_info': '个人信息',
+              'screenshot': '反馈截图'
+            };
+            const sizeKB = (file.file_size / 1024).toFixed(2);
+            return `
+              <tr>
+                <td>${file.id}</td>
+                <td>${file.username}</td>
+                <td>${typeNames[file.file_type] || file.file_type}</td>
+                <td>${file.original_filename}</td>
+                <td>${sizeKB} KB</td>
+                <td>${new Date(file.created_at).toLocaleString()}</td>
+                <td>
+                  <button class="btn" style="padding: 5px 10px; font-size: 12px; margin-right: 5px;" onclick="downloadFile('${file.public_url}', '${file.original_filename}')">
+                    下载
+                  </button>
+                  <button class="btn btn-danger" style="padding: 5px 10px; font-size: 12px;" onclick="deleteFile(${file.id})">
+                    删除
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (error) {
+        console.error('获取文件列表失败:', error);
+        alert(`获取文件列表失败: ${error.message}`);
+      }
+    }
+
+    function downloadFile(url, filename) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    async function deleteFile(fileId) {
+      if (!confirm('确定要删除这个文件吗？此操作不可恢复。')) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/admin/files/${fileId}`, {
+          method: 'DELETE',
+          headers: {'Authorization': `Bearer ${token}`}
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          alert(`删除文件失败: ${errorText}`);
+          return;
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          alert('文件已删除');
+          fetchFiles();
+        }
+      } catch (error) {
+        console.error('删除文件失败:', error);
+        alert(`删除文件失败: ${error.message}`);
+      }
+    }
+
     function closeModal() {
       document.getElementById('logModal').classList.remove('active');
     }
@@ -715,6 +812,7 @@ IP: ${log.ip_address || '-'}</pre>
       fetchLogs();
       fetchFeedbacks();
       fetchTempAccounts();
+      fetchFiles();
 
       // 点击模态框背景关闭
       const logModal = document.getElementById('logModal');
@@ -732,6 +830,7 @@ IP: ${log.ip_address || '-'}</pre>
         fetchLogs();
         fetchFeedbacks();
         fetchTempAccounts();
+        fetchFiles();
       }, 30000);
     });
   </script>
@@ -880,6 +979,47 @@ IP: ${log.ip_address || '-'}</pre>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- 文件管理 -->
+    <div class="card">
+      <h2>📁 文件管理</h2>
+
+      <!-- 文件筛选框 -->
+      <div class="filter-box">
+        <select id="filterFileType">
+          <option value="">所有类型</option>
+          <option value="docx">DOCX文档</option>
+          <option value="user_info">个人信息</option>
+          <option value="screenshot">反馈截图</option>
+        </select>
+        <input id="filterFileUsername" type="text" placeholder="筛选用户名">
+        <button onclick="fetchFiles()">应用筛选</button>
+        <button class="btn" onclick="fetchFiles()" style="margin-left: auto;">🔄 刷新列表</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>用户</th>
+            <th>类型</th>
+            <th>文件名</th>
+            <th>大小</th>
+            <th>上传时间</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="filesTableBody">
+          <tr>
+            <td colspan="7" style="text-align: center; color: #999;">加载中...</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="footer-note" style="margin-top: 15px;">
+        💡 文件存储在 Supabase Storage 中，支持 DOCX 文档、个人信息 TXT 文件和反馈截图的查看、下载和删除
+      </div>
     </div>
 
     <!-- 操作日志 -->

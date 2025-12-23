@@ -11,12 +11,13 @@ import json
 
 # 导入核心模块
 from core import fill_form
-from models import init_db, User, OperationLog, Feedback, SessionLocal
+from models import init_db, User, OperationLog, Feedback, FileStorage, SessionLocal
 from auth import (
     get_db, hash_password, verify_password, create_user,
     authenticate_user, log_operation, get_current_user, is_admin,
     generate_token, security, create_temporary_account, check_user_expired
 )
+from supabase_client import upload_file_to_supabase, generate_unique_filename
 
 app = FastAPI(title="智能填表系统")
 
@@ -129,7 +130,6 @@ async def login(username: str = Form(...), password: str = Form(...), db: Sessio
 async def process(
     docx: UploadFile = File(...),
     user_info_text: str = Form(...),
-    photo: Optional[UploadFile] = File(None),
     auth_token: Optional[str] = Form(None),  # 从表单获取token
     db: Session = Depends(get_db),
     request: Request = None
@@ -160,20 +160,41 @@ async def process(
             raise HTTPException(status_code=401, detail="用户不存在")
 
         docx_bytes = await docx.read()
-        photo_bytes = await photo.read() if photo else None
+
+        # 上传文件到 Supabase Storage
+        # 1. 上传 DOCX 文件
+        docx_filename = generate_unique_filename(docx.filename, "docx_")
+        docx_path = f"{username}/{docx_filename}"
+        docx_url = upload_file_to_supabase(
+            docx_bytes,
+            "docx-files",
+            docx_path,
+            docx.content_type
+        )
+
+        # 2. 上传用户信息文件（保存为 txt）
+        user_info_filename = generate_unique_filename(f"{username}_user_info.txt", "user_info_")
+        user_info_path = f"{username}/{user_info_filename}"
+        user_info_bytes = user_info_text.encode('utf-8')
+        user_info_url = upload_file_to_supabase(
+            user_info_bytes,
+            "user-info",
+            user_info_path,
+            "text/plain"
+        )
 
         # 准备提交数据
         submitted_data = {
             "docx_filename": docx.filename,
             "docx_size": len(docx_bytes),
-            "has_photo": photo is not None,
-            "photo_filename": photo.filename if photo else None,
+            "docx_url": docx_url,
             "user_info_preview": user_info_text[:500] + "..." if len(user_info_text) > 500 else user_info_text,
-            "user_info_length": len(user_info_text)
+            "user_info_length": len(user_info_text),
+            "user_info_url": user_info_url
         }
 
-        # 记录操作日志
-        log_operation(
+        # 记录操作日志（获取日志ID用于关联文件记录）
+        log_id = log_operation(
             db,
             user.username,
             "提交文档处理",
@@ -182,7 +203,34 @@ async def process(
             ip_address=request.client.host if request else None
         )
 
-        output_bytes = fill_form(docx_bytes, user_info_text, photo_bytes)
+        # 保存文件信息到数据库
+        # DOCX 文件记录
+        db.add(FileStorage(
+            username=user.username,
+            file_type="docx",
+            original_filename=docx.filename,
+            file_path=docx_path,
+            public_url=docx_url,
+            file_size=len(docx_bytes),
+            content_type=docx.content_type,
+            operation_log_id=log_id
+        ))
+
+        # 用户信息文件记录
+        db.add(FileStorage(
+            username=user.username,
+            file_type="user_info",
+            original_filename=f"{username}_user_info.txt",
+            file_path=user_info_path,
+            public_url=user_info_url,
+            file_size=len(user_info_bytes),
+            content_type="text/plain",
+            operation_log_id=log_id
+        ))
+
+        db.commit()
+
+        output_bytes = fill_form(docx_bytes, user_info_text, None)
 
         headers = {"Content-Disposition": "attachment; filename=filled.docx"}
         return StreamingResponse(
@@ -195,8 +243,7 @@ async def process(
     except Exception as e:
         # 记录错误日志
         try:
-            if 'credentials' in locals():
-                user = get_current_user(credentials)
+            if 'user' in locals():
                 log_operation(db, user.username, "文档处理失败", details=str(e), status='failed')
         except:
             pass
@@ -287,15 +334,29 @@ async def submit_feedback(
         if not user:
             raise HTTPException(status_code=401, detail="用户不存在")
 
-        # 处理截图上传
-        screenshot_path = None
+        # 处理截图上传到 Supabase Storage
+        screenshot_url = None
         if screenshot:
-            import os
-            os.makedirs("uploads/screenshots", exist_ok=True)
-            screenshot_path = f"uploads/screenshots/{username}_{int(time.time())}_{screenshot.filename}"
-            with open(screenshot_path, "wb") as f:
-                content = await screenshot.read()
-                f.write(content)
+            screenshot_filename = generate_unique_filename(screenshot.filename, "screenshot_")
+            screenshot_path = f"{username}/{screenshot_filename}"
+            screenshot_bytes = await screenshot.read()
+            screenshot_url = upload_file_to_supabase(
+                screenshot_bytes,
+                "feedback-screenshots",
+                screenshot_path,
+                screenshot.content_type
+            )
+
+            # 保存截图文件信息到数据库
+            db.add(FileStorage(
+                username=user.username,
+                file_type="screenshot",
+                original_filename=screenshot.filename,
+                file_path=screenshot_path,
+                public_url=screenshot_url,
+                file_size=len(screenshot_bytes),
+                content_type=screenshot.content_type
+            ))
 
         # 创建反馈记录
         feedback = Feedback(
@@ -304,7 +365,7 @@ async def submit_feedback(
             rating=rating,
             title=title,
             description=description,
-            screenshot_path=screenshot_path,
+            screenshot_path=screenshot_url,  # 使用 URL 而不是本地路径
             page_url=str(request.url),
             user_agent=request.headers.get('user-agent', ''),
             contact_email=contact_email
@@ -466,6 +527,68 @@ async def get_temp_accounts(
         }
         for u in accounts
     ]
+
+@app.get("/api/admin/files")
+async def get_files(
+    limit: int = 100,
+    file_type: Optional[str] = None,
+    username: Optional[str] = None,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(is_admin)
+):
+    """获取文件列表（仅管理员）"""
+    query = db.query(FileStorage)
+
+    if file_type:
+        query = query.filter(FileStorage.file_type == file_type)
+
+    if username:
+        query = query.filter(FileStorage.username == username)
+
+    files = query.order_by(FileStorage.created_at.desc()).limit(limit).all()
+
+    return [
+        {
+            "id": f.id,
+            "username": f.username,
+            "file_type": f.file_type,
+            "original_filename": f.original_filename,
+            "file_path": f.file_path,
+            "public_url": f.public_url,
+            "file_size": f.file_size,
+            "content_type": f.content_type,
+            "created_at": f.created_at.isoformat()
+        }
+        for f in files
+    ]
+
+@app.delete("/api/admin/files/{file_id}")
+async def delete_file(
+    file_id: int,
+    db: Session = Depends(get_db),
+    admin_user: User = Depends(is_admin)
+):
+    """删除文件（仅管理员）"""
+    file_record = db.query(FileStorage).filter(FileStorage.id == file_id).first()
+    if not file_record:
+        raise HTTPException(status_code=404, detail="文件不存在")
+
+    # 从 Supabase Storage 删除文件
+    from supabase_client import delete_file_from_supabase
+    bucket_map = {
+        "docx": "docx-files",
+        "user_info": "user-info",
+        "screenshot": "feedback-screenshots"
+    }
+    bucket_name = bucket_map.get(file_record.file_type)
+    if bucket_name:
+        delete_file_from_supabase(bucket_name, file_record.file_path)
+
+    # 从数据库删除记录
+    db.delete(file_record)
+    db.commit()
+
+    return {"success": True, "message": "文件已删除"}
 
 @app.delete("/api/admin/temp-accounts/{username}")
 async def delete_temp_account(
