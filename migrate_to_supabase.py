@@ -12,9 +12,9 @@ from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 import json
 
-# 配置数据库连接
+# 配置数据库连接 - 使用 Session Pooler（支持 IPv4）
 SQLITE_DB_PATH = "app.db"
-SUPABASE_URL = "postgresql://postgres:jinzenshi996@db.mckoiztgjskrvueconqx.supabase.co:5432/postgres"
+SUPABASE_URL = "postgresql://postgres.mckoiztgjskrvueconqx:jinzenshi996@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
 
 def create_sqlite_engine():
     """创建 SQLite 引擎"""

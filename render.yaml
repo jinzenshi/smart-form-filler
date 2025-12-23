@@ -12,9 +12,9 @@ services:
       - key: MODEL_ENDPOINT
         value: doubao-seed-1-6-251015
 
-      # PostgreSQL 数据库配置（Supabase）
+      # PostgreSQL 数据库配置（Supabase Session Pooler - 支持 IPv4）
       - key: DATABASE_URL
-        value: postgresql://postgres:jinzenshi996@db.mckoiztgjskrvueconqx.supabase.co:5432/postgres
+        value: postgresql://postgres.mckoiztgjskrvueconqx:jinzenshi996@aws-1-us-east-1.pooler.supabase.com:5432/postgres?sslmode=require
 
       # 服务端口
       - key: PORT
