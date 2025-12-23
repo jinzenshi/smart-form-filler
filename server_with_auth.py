@@ -513,7 +513,7 @@ async def get_temp_accounts(
     query = db.query(User).filter(User.is_temporary == True)
 
     if not include_expired:
-        query = query.filter(User.expires_at > datetime.utcnow())
+        query = query.filter(User.expires_at > datetime.now(timezone.utc))
 
     accounts = query.order_by(User.created_at.desc()).all()
 
@@ -523,7 +523,10 @@ async def get_temp_accounts(
             "created_at": u.created_at.isoformat(),
             "expires_at": u.expires_at.isoformat() if u.expires_at else None,
             "is_expired": check_user_expired(u),
-            "days_remaining": max(0, (u.expires_at - datetime.now(timezone.utc)).days) if u.expires_at else None
+            "days_remaining": (
+                max(0, (u.expires_at.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)).days)
+                if u.expires_at else None
+            )
         }
         for u in accounts
     ]
