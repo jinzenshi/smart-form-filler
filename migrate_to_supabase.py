@@ -14,7 +14,8 @@ import json
 
 # 配置数据库连接
 SQLITE_DB_PATH = "app.db"
-SUPABASE_URL = "postgresql://postgres:ZZSzzs996@@@db.mckoiztgjskrvueconqx.supabase.co:5432/postgres"
+# 注意：密码中的 @ 符号需要 URL 编码为 %40
+SUPABASE_URL = "postgresql://postgres:ZZSzzs996%40%40@db.mckoiztgjskrvueconqx.supabase.co:5432/postgres"
 
 def create_sqlite_engine():
     """创建 SQLite 引擎"""
