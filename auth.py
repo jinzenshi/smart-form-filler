@@ -78,8 +78,16 @@ def check_user_expired(user: User) -> bool:
     """检查用户是否过期"""
     if not user.expires_at:
         return False  # 永不过期（如管理员）
+
+    # 确保两个时间都有相同的时区设置
+    expires_at = user.expires_at
+
+    # 如果 expires_at 是 naive 时间，假设它是 UTC 时间
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
     # 使用 timezone-aware 的时间进行比较
-    return user.expires_at < datetime.now(timezone.utc)
+    return expires_at < datetime.now(timezone.utc)
 
 def generate_temporary_username(db: Session) -> str:
     """生成唯一的临时用户名"""

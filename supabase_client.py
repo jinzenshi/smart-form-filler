@@ -9,10 +9,10 @@ import os
 from supabase import create_client, Client
 from datetime import datetime
 
-# Supabase 配置 - 全新项目
-SUPABASE_URL = "https://rttgrvpsmltltegykcsw.supabase.co"
+# Supabase 配置 - 美国西部项目（us-west-2）
+SUPABASE_URL = "https://uwajqrjmamoaccslzrzo.supabase.co"
 # 使用正确的 service_role key
-SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ0dGdydnBzbWx0bHRlZ3lrY3N3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjQ5Njk2MSwiZXhwIjoyMDgyMDcyOTYxfQ.tGaGPpdQUcxbLHdCuohlf8ZjX781helCmEWihnxX7wo"
+SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3YWpxcmptYW1vYWNjc2x6cnpvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjUwMjQ1NSwiZXhwIjoyMDgyMDc4NDU1fQ.Cd_Kivew6-R0dmgDAN1tE0nYYHgvZrb3mr84wJvXukQ"
 
 # 创建 Supabase 客户端（使用 service_role key）
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)

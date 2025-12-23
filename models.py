@@ -80,21 +80,20 @@ def get_database_url():
     if os.getenv("DATABASE_URL"):
         return os.getenv("DATABASE_URL")
 
-    # 如果没有设置，则使用全新项目的 Supabase PostgreSQL Session Pooler
-    return "postgresql://postgres.rttgrvpsmltltegykcsw:zzszzs996@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
+    # 如果没有设置，则使用美国西部项目的 Supabase PostgreSQL Session Pooler
+    return "postgresql://postgres.uwajqrjmamoaccslzrzo:zzszzs996@aws-0-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require"
 
 DATABASE_URL = get_database_url()
 
 # 创建引擎 - 根据数据库类型选择配置
 if DATABASE_URL.startswith("postgresql"):
-    # PostgreSQL 配置 - 使用连接池优化性能
-    # 注意：ap-southeast-1 Session Pooler pool_size 较小，需要调整
+    # PostgreSQL 配置 - 使用连接池优化性能（us-west-2 地区支持更大的 pool_size）
     engine = create_engine(
         DATABASE_URL,
-        pool_size=5,        # 减小连接池大小
-        max_overflow=5,     # 减小最大溢出
+        pool_size=20,       # 恢复更大的连接池（美国地区支持）
+        max_overflow=30,    # 恢复更大的最大溢出
         pool_pre_ping=True,
-        pool_recycle=1800,  # 缩短连接回收时间
+        pool_recycle=3600,  # 恢复标准连接回收时间
         pool_timeout=30,    # 设置连接超时
         echo=False  # 设置为 True 可以看到 SQL 日志
     )
