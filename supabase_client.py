@@ -9,13 +9,9 @@ import os
 from supabase import create_client, Client
 from datetime import datetime
 
-# Supabase 配置
+# Supabase 配置 - 注意：URL 不应该以斜杠结尾，让 SDK 自动处理
 SUPABASE_URL = "https://mckoiztgjskrvueconqx.supabase.co"
 SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ja29penRnc2tydnVlY29ucXgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTY4NjU4MDQ3MCwiZXhwIjoyMDAyMTU2NDcwfQ.LmJ7wLq7bX5K3zC8h3oV9YkGZ5c8h1j6t6r9e5v3z0"
-
-# 确保URL以斜杠结尾
-if not SUPABASE_URL.endswith('/'):
-    SUPABASE_URL = SUPABASE_URL + '/'
 
 # 创建 Supabase 客户端
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
@@ -49,10 +45,8 @@ def upload_file_to_supabase(file_content: bytes, bucket_name: str, file_path: st
             file_options=file_options
         )
 
-        # 构建公共URL
-        # 格式: https://{project_ref}.supabase.co/storage/v1/object/public/{bucket_name}/{file_path}
-        project_ref = SUPABASE_URL.split('//')[1].split('.')[0]
-        public_url = f"{SUPABASE_URL}storage/v1/object/public/{bucket_name}/{file_path}"
+        # 使用 SDK 的 get_public_url 方法获取公共URL
+        public_url = bucket.get_public_url(file_path)
 
         print(f"✅ 文件上传成功: {public_url}")
         return public_url
@@ -63,13 +57,14 @@ def upload_file_to_supabase(file_content: bytes, bucket_name: str, file_path: st
 
         # 提供更详细的错误信息
         if "signature verification failed" in error_msg or "Unauthorized" in error_msg:
-            print("\n💡 权限错误可能原因：")
-            print("   1. 存储桶需要设置为 Public（公共访问）")
-            print("   2. 存储桶需要配置 RLS 策略允许匿名用户上传")
-            print("\n📝 解决方案：")
-            print("   请登录 Supabase Dashboard → Storage → 选择bucket →")
-            print("   - 确保 'Public bucket' 选项已启用")
-            print("   - 在 'Policies' 中添加允许匿名用户 INSERT 和 SELECT 的策略")
+            print("\n💡 身份验证错误可能原因：")
+            print("   1. SUPABASE_URL 配置错误（URL 不应包含路径后缀）")
+            print("   2. 存储桶需要设置为 Public（公共访问）")
+            print("   3. 缺少必要的 RLS 策略")
+            print("\n📝 检查项目：")
+            print("   - SUPABASE_URL 应该是: https://mckoiztgjskrvueconqx.supabase.co")
+            print("   - 登录 Supabase Dashboard → Storage → 选择bucket →")
+            print("     确保 'Public bucket' 选项已启用")
 
         raise Exception(f"文件上传失败: {error_msg}")
 
@@ -103,7 +98,8 @@ def get_file_info(bucket_name: str, file_path: str) -> dict:
         文件信息字典
     """
     try:
-        response = supabase.storage.from_(bucket_name).list(file_path.split('/')[:-1])
+        bucket = supabase.storage.from_(bucket_name)
+        response = bucket.list(file_path.split('/')[:-1])
         for item in response:
             if item['name'] == file_path.split('/')[-1]:
                 return {
@@ -111,7 +107,7 @@ def get_file_info(bucket_name: str, file_path: str) -> dict:
                     'id': item['id'],
                     'created_at': item['created_at'],
                     'size': item['metadata']['size'],
-                    'public_url': supabase.storage.from_(bucket_name).get_public_url(file_path)
+                    'public_url': bucket.get_public_url(file_path)
                 }
         return {}
     except Exception as e:
