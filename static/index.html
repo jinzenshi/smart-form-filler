@@ -294,6 +294,7 @@
     /* 表格渲染修正 */
     .preview-container .docx-wrapper table {
       width: 100% !important;
+      min-width: 800px !important; /* 防止在窄屏下表格完全挤压变形 */
       border-collapse: collapse !important;
       table-layout: auto !important; /* 允许根据文字自动调整列宽，防止挤压 */
       word-break: break-all !important; /* 强制换行防止撑破表格 */
@@ -302,6 +303,19 @@
     .preview-container .docx-wrapper td {
       border: 1px solid #000 !important; /* 增强边框可见度 */
       min-width: 20px;
+    }
+
+    /* AI 思考中的加载提示 */
+    .ai-thinking {
+      color: #667eea;
+      font-size: 14px;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .ai-thinking::before {
+      content: "🤖 ";
+      font-size: 18px;
     }
     .preview-note{
       text-align: center;
@@ -465,6 +479,7 @@
           script.async = true;
 
           script.onload = () => {
+            script.dataset.loaded = "true"; // 标记已加载，防止触发超时逻辑
             console.log(`✅ 从 CDN ${cdnIndex + 1} 加载 docx-preview 成功`);
             console.log('  - 原始 docx 变量:', typeof docx);
             console.log('  - window.docx:', typeof window.docx);
@@ -477,8 +492,6 @@
               console.log('  - window.docx:', window.docx);
               console.log('  - window.docx.renderAsync:', typeof window.docx?.renderAsync);
               console.log('  - docx.renderAsync:', typeof docx?.renderAsync);
-              console.log('  - window.docx.loadAsync:', typeof window.docx?.loadAsync);
-              console.log('  - docx.loadAsync:', typeof docx?.loadAsync);
               console.log('  - JSZip:', typeof JSZip);
 
               // 确保 docx 库加载到全局变量
@@ -667,6 +680,9 @@
       btn.disabled = true;
       btn.innerHTML = '<span class="loading-spinner"></span>生成预览中...';
 
+      // 显示 AI 思考中的提示
+      previewContainer.innerHTML = '<div class="ai-thinking">AI 正在思考如何填写表格...</div>';
+
       try{
         const res = await fetch('/api/process', {
           method: 'POST',
@@ -735,53 +751,18 @@
             console.log('  - container:', previewContainer);
             console.log('  - lib:', docxLib);
 
-            // 尝试不同的 API 格式
+            // 使用简化且稳健的渲染配置
             try {
-              // 格式1: renderAsync(data, container, options)
-              await docxLib.renderAsync(blob, previewContainer, {
-                className: 'docx',
+              // docx-preview 现代版本推荐直接传入 DOM 元素
+              await docxLib.renderAsync(blob, previewContainer, null, {
+                className: "docx",
                 inWrapper: true,
-                ignoreWidth: false,      // 关键：必须为 false，以保留 Word 原有宽度
-                ignoreHeight: false,
-                ignoreFonts: false,
-                breakPages: true,        // 开启分页，更接近真实效果
-                trimXmlDeclaration: true,
-                debug: true  // 启用调试模式查看详细日志
+                ignoreWidth: false,
+                breakPages: true
               });
-            } catch (err1) {
-              console.warn('格式1失败，尝试格式2...', err1);
-              try {
-                // 格式2: renderAsync(data, container, styles, options)
-                await docxLib.renderAsync(blob, previewContainer, null, {
-                  className: 'docx',
-                  inWrapper: true,
-                  ignoreWidth: false,      // 关键：必须为 false，以保留 Word 原有宽度
-                  ignoreHeight: false,
-                  ignoreFonts: false,
-                  breakPages: true,        // 开启分页，更接近真实效果
-                  trimXmlDeclaration: true,
-                  debug: true
-                });
-              } catch (err2) {
-                console.warn('格式2失败，尝试格式3...', err2);
-                try {
-                  // 格式3: 直接传递文件对象
-                  const file = new File([blob], 'document.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
-                  await docxLib.renderAsync(file, previewContainer, {
-                    className: 'docx',
-                    inWrapper: true,
-                    ignoreWidth: false,      // 关键：必须为 false，以保留 Word 原有宽度
-                    ignoreHeight: false,
-                    ignoreFonts: false,
-                    breakPages: true,        // 开启分页，更接近真实效果
-                    trimXmlDeclaration: true,
-                    debug: true
-                  });
-                } catch (err3) {
-                  console.error('所有格式都失败', err3);
-                  throw err3;
-                }
-              }
+            } catch (renderError) {
+              console.error('❌ 预览渲染失败:', renderError);
+              throw renderError;
             }
 
             console.log('预览渲染完成');
@@ -906,7 +887,8 @@
         <form id="form">
           <label>📄 上传 Word 模板</label>
           <input id="docx" type="file" accept=".docx" required>
-          <div class="note">表格中的空单元格将自动预置为 {1}, {2}, {3}...</div>
+          <div class="note">📸 表格中的空单元格将自动预置为 {1}, {2}, {3}...</div>
+          <div class="note" style="margin-top: 5px;">💡 提示：请确保模板中包含名为"照片"的单元格以自动插入证件照</div>
 
           <label>📝 上传个人资料文件</label>
           <input id="user_info" type="file" accept=".txt" required>

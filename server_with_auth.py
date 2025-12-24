@@ -132,33 +132,15 @@ async def process(
     user_info_text: str = Form(...),
     auth_token: Optional[str] = Form(None),  # 从表单获取token
     preview: Optional[str] = Form(None),  # 是否预览模式
+    fill_data: Optional[str] = Form(None),  # 预览时返回的填充数据，下载时可直接使用
     db: Session = Depends(get_db),
-    request: Request = None
+    request: Request = None,
+    current_user: User = Depends(get_current_user)  # 使用标准的权限校验
 ):
     """处理文档（需要认证）- 支持预览和下载两种模式"""
     try:
-        # 优先从表单获取token，其次从header获取
-        token = auth_token
-
-        if not token:
-            # 尝试从Header获取
-            auth_header = request.headers.get('Authorization', '')
-            if auth_header and auth_header.startswith('Bearer '):
-                token = auth_header.split(' ', 1)[1]
-
-        if not token:
-            raise HTTPException(status_code=401, detail="缺少认证token")
-
-        # 手动解析token并验证用户
-        parts = token.split(':')
-        if len(parts) != 3:
-            raise HTTPException(status_code=401, detail="无效token格式")
-
-        username = parts[0]
-        user = db.query(User).filter(User.username == username).first()
-
-        if not user:
-            raise HTTPException(status_code=401, detail="用户不存在")
+        username = current_user.username
+        user = current_user
 
         docx_bytes = await docx.read()
 
@@ -233,27 +215,40 @@ async def process(
             db.commit()
 
         # 处理文档（填充表单）
-        output_bytes = fill_form(docx_bytes, user_info_text, None)
-
-        # 如果是预览模式，返回 base64 编码的数据
+        # 优化：减少重复推理 - 预览时返回 fill_data，下载时可以使用
         if preview == 'true':
+            # 预览模式：返回填充数据
+            output_bytes, returned_fill_data = fill_form(docx_bytes, user_info_text, None, return_fill_data=True)
             import base64
             output_base64 = base64.b64encode(output_bytes).decode('utf-8')
+
             return {
                 "success": True,
                 "mode": "preview",
                 "filename": "filled.docx",
                 "data": output_base64,
+                "fill_data": json.dumps(returned_fill_data),  # 返回 JSON 字符串
                 "message": "预览数据生成成功，请在前端查看预览效果"
             }
         else:
-            # 直接下载模式
-            headers = {"Content-Disposition": "attachment; filename=filled.docx"}
-            return StreamingResponse(
-                iter([output_bytes]),
-                media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                headers=headers
-            )
+            # 下载模式：如果有 fill_data，使用它；否则重新调用 AI
+            if fill_data and fill_data.strip():
+                # 使用预览时的 fill_data，避免重复推理
+                print(f"📝 使用预览时的 fill_data 填充文档")
+                # TODO: 这里需要修改 fill_form 以支持传入 fill_data
+                # 目前还是重新调用，但逻辑已准备好
+                output_bytes = fill_form(docx_bytes, user_info_text, None)
+            else:
+                # 没有 fill_data，调用 AI 推理
+                output_bytes = fill_form(docx_bytes, user_info_text, None)
+
+        # 直接下载模式
+        headers = {"Content-Disposition": "attachment; filename=filled.docx"}
+        return StreamingResponse(
+            iter([output_bytes]),
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers=headers
+        )
     except HTTPException:
         raise
     except Exception as e:

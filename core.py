@@ -55,24 +55,55 @@ def get_doubao_response(user_info, markdown_context):
 
         res_json = response.json()
         content = res_json['choices'][0]['message']['content']
-        
+
         # 清理 Markdown 代码块标记 (参考 smart.py 的解析逻辑)
         content = content.replace("```json", "").replace("```", "").strip()
 
+        # 更鲁棒的 JSON 提取逻辑
         try:
-            return json.loads(content)
+            fill_data = json.loads(content)
         except json.JSONDecodeError:
             try:
-                return ast.literal_eval(content)
-            except:
-                return {}
+                # 尝试匹配第一个 { 和最后一个 }
+                match = re.search(r'\{.*\}', content, re.DOTALL)
+                if match:
+                    extracted_json = match.group(0)
+                    print(f"📝 提取到 JSON: {extracted_json[:100]}...")
+                    fill_data = json.loads(extracted_json)
+                else:
+                    print("⚠️ 未找到 JSON 格式内容")
+                    fill_data = {}
+            except (json.JSONDecodeError, AttributeError) as e:
+                print(f"❌ JSON 解析失败: {e}")
+                try:
+                    fill_data = ast.literal_eval(content)
+                except:
+                    print("❌ 所有 JSON 解析方法都失败")
+                    fill_data = {}
+
+        # 打印 fill_data 供 server_with_auth.py 记录
+        print(f"📋 AI 生成的填充数据: {fill_data}")
+        return fill_data
     except Exception as e:
         print(f"❌ Error during AI inference: {e}")
         return {}
 
-def fill_form(docx_bytes, user_info_text, photo_bytes):
+def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
+    """
+    填充表单
+
+    Args:
+        docx_bytes: Word文档字节数据
+        user_info_text: 用户信息文本
+        photo_bytes: 照片字节数据
+        return_fill_data: 是否返回填充数据（用于减少重复推理）
+
+    Returns:
+        如果 return_fill_data=True，返回 (output_bytes, fill_data)
+        否则返回 output_bytes
+    """
     doc = Document(io.BytesIO(docx_bytes))
-    
+
     # 1. 处理照片占位符
     photo_coords = []
     for t_idx, table in enumerate(doc.tables):
@@ -81,7 +112,7 @@ def fill_form(docx_bytes, user_info_text, photo_bytes):
                 text_lower = cell.text.lower()
                 if any(k in text_lower for k in ["照片", "相片", "证件照"]):
                     photo_coords.append((t_idx, r_idx, c_idx))
-    
+
     if photo_coords and photo_bytes:
         for (t_idx, r_idx, c_idx) in photo_coords:
             cell = doc.tables[t_idx].rows[r_idx].cells[c_idx]
@@ -136,7 +167,10 @@ def fill_form(docx_bytes, user_info_text, photo_bytes):
     if not placeholder_map:
         out = io.BytesIO()
         doc.save(out)
-        return out.getvalue()
+        output_bytes = out.getvalue()
+        if return_fill_data:
+            return output_bytes, {}
+        return output_bytes
 
     # 3. 调用 AI 进行推理
     fill_data = get_doubao_response(user_info_text, "\n".join(markdown_lines))
@@ -154,4 +188,8 @@ def fill_form(docx_bytes, user_info_text, photo_bytes):
 
     out = io.BytesIO()
     doc.save(out)
-    return out.getvalue()
+    output_bytes = out.getvalue()
+
+    if return_fill_data:
+        return output_bytes, fill_data
+    return output_bytes
