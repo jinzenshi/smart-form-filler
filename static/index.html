@@ -656,6 +656,7 @@
 
       const docx = document.getElementById('docx').files[0];
       const userInfoFile = document.getElementById('user_info').files[0];
+      const previewContainer = document.getElementById('preview-container');
 
       if(!docx){
         alert('请上传 Word 模板');
@@ -719,7 +720,6 @@
           previewSection.classList.add('active');
 
           // 清空预览容器
-          const previewContainer = document.getElementById('preview-container');
           previewContainer.innerHTML = '<div class="preview-note"><span class="loading-spinner"></span>正在渲染预览...</div>';
 
           // 将 base64 转换为 Blob
