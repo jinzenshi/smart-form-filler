@@ -277,32 +277,36 @@
       padding: 15px;
       min-height: 600px;
       box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
-      overflow: auto; /* 关键：允许内部滚动 */
+      overflow: auto !important; /* 强制允许双向滚动 */
       display: block; /* 恢复块级布局 */
     }
 
     /* 强制覆盖 docx-preview 内部样式 */
     .preview-container .docx-wrapper {
       background-color: white !important;
-      padding: 40px !important; /* 模拟 A4 边距 */
+      padding: 20px !important;
       margin: 0 auto;
-      width: fit-content !important; /* 关键：随内容宽度自适应 */
-      min-width: 800px; /* 保证 A4 基础宽度 */
+      /* 关键：取消固定宽度，改用 min-content 确保内容不被截断 */
+      width: fit-content !important;
+      min-width: 100% !important;
       box-shadow: 0 0 10px rgba(0,0,0,0.2);
     }
 
-    /* 表格渲染修正 */
+    /* 表格渲染逻辑修正 */
     .preview-container .docx-wrapper table {
-      width: 100% !important;
-      min-width: 800px !important; /* 防止在窄屏下表格完全挤压变形 */
+      /* 关键：将 fixed 改为 auto，让表格根据内容自适应宽度 */
+      table-layout: auto !important;
+      width: auto !important; /* 允许表格超出父级宽度 */
+      min-width: 100% !important;
+      word-break: normal !important; /* 避免长英文/数字强行断行 */
+      overflow-wrap: break-word;
       border-collapse: collapse !important;
-      table-layout: auto !important; /* 允许根据文字自动调整列宽，防止挤压 */
-      word-break: break-all !important; /* 强制换行防止撑破表格 */
     }
 
     .preview-container .docx-wrapper td {
       border: 1px solid #000 !important; /* 增强边框可见度 */
-      min-width: 20px;
+      min-width: 50px; /* 设置最小单元格宽度防止挤压 */
+      white-space: nowrap; /* 尽量保持内容不换行以撑开表格，如需换行可去掉此项 */
     }
 
     /* AI 思考中的加载提示 */
