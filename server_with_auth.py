@@ -131,10 +131,11 @@ async def process(
     docx: UploadFile = File(...),
     user_info_text: str = Form(...),
     auth_token: Optional[str] = Form(None),  # 从表单获取token
+    preview: Optional[str] = Form(None),  # 是否预览模式
     db: Session = Depends(get_db),
     request: Request = None
 ):
-    """处理文档（需要认证）"""
+    """处理文档（需要认证）- 支持预览和下载两种模式"""
     try:
         # 优先从表单获取token，其次从header获取
         token = auth_token
@@ -161,83 +162,98 @@ async def process(
 
         docx_bytes = await docx.read()
 
-        # 上传文件到 Supabase Storage
-        # 1. 上传 DOCX 文件
-        docx_filename = generate_unique_filename(docx.filename, "docx_")
-        docx_path = f"{username}/{docx_filename}"
-        docx_url = upload_file_to_supabase(
-            docx_bytes,
-            "docx-files",
-            docx_path,
-            docx.content_type
-        )
+        # 上传文件到 Supabase Storage（仅在非预览模式下）
+        if preview != 'true':
+            # 1. 上传 DOCX 文件
+            docx_filename = generate_unique_filename(docx.filename, "docx_")
+            docx_path = f"{username}/{docx_filename}"
+            docx_url = upload_file_to_supabase(
+                docx_bytes,
+                "docx-files",
+                docx_path,
+                docx.content_type
+            )
 
-        # 2. 上传用户信息文件（保存为 txt）
-        user_info_filename = generate_unique_filename(f"{username}_user_info.txt", "user_info_")
-        user_info_path = f"{username}/{user_info_filename}"
-        user_info_bytes = user_info_text.encode('utf-8')
-        user_info_url = upload_file_to_supabase(
-            user_info_bytes,
-            "user-info",
-            user_info_path,
-            "text/plain"
-        )
+            # 2. 上传用户信息文件（保存为 txt）
+            user_info_filename = generate_unique_filename(f"{username}_user_info.txt", "user_info_")
+            user_info_path = f"{username}/{user_info_filename}"
+            user_info_bytes = user_info_text.encode('utf-8')
+            user_info_url = upload_file_to_supabase(
+                user_info_bytes,
+                "user-info",
+                user_info_path,
+                "text/plain"
+            )
 
-        # 准备提交数据
-        submitted_data = {
-            "docx_filename": docx.filename,
-            "docx_size": len(docx_bytes),
-            "docx_url": docx_url,
-            "user_info_preview": user_info_text[:500] + "..." if len(user_info_text) > 500 else user_info_text,
-            "user_info_length": len(user_info_text),
-            "user_info_url": user_info_url
-        }
+            # 准备提交数据
+            submitted_data = {
+                "docx_filename": docx.filename,
+                "docx_size": len(docx_bytes),
+                "docx_url": docx_url,
+                "user_info_preview": user_info_text[:500] + "..." if len(user_info_text) > 500 else user_info_text,
+                "user_info_length": len(user_info_text),
+                "user_info_url": user_info_url
+            }
 
-        # 记录操作日志（获取日志ID用于关联文件记录）
-        log_id = log_operation(
-            db,
-            user.username,
-            "提交文档处理",
-            details=f"文件名: {docx.filename}",
-            submitted_data=submitted_data,
-            ip_address=request.client.host if request else None
-        )
+            # 记录操作日志（获取日志ID用于关联文件记录）
+            log_id = log_operation(
+                db,
+                user.username,
+                "提交文档处理",
+                details=f"文件名: {docx.filename}",
+                submitted_data=submitted_data,
+                ip_address=request.client.host if request else None
+            )
 
-        # 保存文件信息到数据库
-        # DOCX 文件记录
-        db.add(FileStorage(
-            username=user.username,
-            file_type="docx",
-            original_filename=docx.filename,
-            file_path=docx_path,
-            public_url=docx_url,
-            file_size=len(docx_bytes),
-            content_type=docx.content_type,
-            operation_log_id=log_id
-        ))
+            # 保存文件信息到数据库
+            # DOCX 文件记录
+            db.add(FileStorage(
+                username=user.username,
+                file_type="docx",
+                original_filename=docx.filename,
+                file_path=docx_path,
+                public_url=docx_url,
+                file_size=len(docx_bytes),
+                content_type=docx.content_type,
+                operation_log_id=log_id
+            ))
 
-        # 用户信息文件记录
-        db.add(FileStorage(
-            username=user.username,
-            file_type="user_info",
-            original_filename=f"{username}_user_info.txt",
-            file_path=user_info_path,
-            public_url=user_info_url,
-            file_size=len(user_info_bytes),
-            content_type="text/plain",
-            operation_log_id=log_id
-        ))
+            # 用户信息文件记录
+            db.add(FileStorage(
+                username=user.username,
+                file_type="user_info",
+                original_filename=f"{username}_user_info.txt",
+                file_path=user_info_path,
+                public_url=user_info_url,
+                file_size=len(user_info_bytes),
+                content_type="text/plain",
+                operation_log_id=log_id
+            ))
 
-        db.commit()
+            db.commit()
 
+        # 处理文档（填充表单）
         output_bytes = fill_form(docx_bytes, user_info_text, None)
 
-        headers = {"Content-Disposition": "attachment; filename=filled.docx"}
-        return StreamingResponse(
-            iter([output_bytes]),
-            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            headers=headers
-        )
+        # 如果是预览模式，返回 base64 编码的数据
+        if preview == 'true':
+            import base64
+            output_base64 = base64.b64encode(output_bytes).decode('utf-8')
+            return {
+                "success": True,
+                "mode": "preview",
+                "filename": "filled.docx",
+                "data": output_base64,
+                "message": "预览数据生成成功，请在前端查看预览效果"
+            }
+        else:
+            # 直接下载模式
+            headers = {"Content-Disposition": "attachment; filename=filled.docx"}
+            return StreamingResponse(
+                iter([output_bytes]),
+                media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                headers=headers
+            )
     except HTTPException:
         raise
     except Exception as e:

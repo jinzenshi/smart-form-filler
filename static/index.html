@@ -13,15 +13,66 @@
       min-height: 100vh;
     }
     .container{
-      max-width: 720px;
-      margin: 50px auto;
+      max-width: 1400px;
+      margin: 30px auto;
       padding: 20px;
     }
     .card{
       background: white;
       border-radius: 20px;
-      padding: 50px;
+      padding: 40px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      display: flex;
+      gap: 30px;
+    }
+
+    /* 左侧表单区域 */
+    .form-section{
+      flex: 0 0 450px;
+    }
+
+    /* 右侧预览区域 */
+    .preview-section-wrapper{
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 预览区域在右侧时的样式 */
+    .preview-section-wrapper .preview-section{
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .preview-section-wrapper .preview-title{
+      margin-bottom: 15px;
+    }
+
+    .preview-section-wrapper .preview-container{
+      flex: 1;
+    }
+
+    .preview-section-wrapper .confirm-download{
+      margin-top: 15px;
+    }
+
+    /* 滚动提示 */
+    .preview-container::-webkit-scrollbar{
+      width: 12px;
+      height: 12px;
+    }
+    .preview-container::-webkit-scrollbar-track{
+      background: #e0e0e0;
+      border-radius: 6px;
+    }
+    .preview-container::-webkit-scrollbar-thumb{
+      background: #667eea;
+      border-radius: 6px;
+    }
+    .preview-container::-webkit-scrollbar-thumb:hover{
+      background: #5568d3;
     }
     h1{
       text-align: center;
@@ -76,9 +127,11 @@
     }
     .actions{
       margin-top: 40px;
+      display: flex;
+      gap: 15px;
     }
     button{
-      width: 100%;
+      flex: 1;
       padding: 18px;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
@@ -102,6 +155,29 @@
       cursor: not-allowed;
       transform: none;
     }
+    /* 预览按钮特殊样式 */
+    #preview-btn{
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+    }
+    #preview-btn:hover{
+      box-shadow: 0 6px 20px rgba(245, 87, 108, 0.6);
+    }
+    #preview-btn:disabled{
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    /* 下载按钮特殊样式 */
+    #download-btn{
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+      display: none;
+    }
+    #download-btn:hover{
+      box-shadow: 0 6px 20px rgba(79, 172, 254, 0.6);
+    }
+
     .user-info{
       position: fixed;
       top: 20px;
@@ -163,8 +239,289 @@
       background: #f9f9f9;
       border-radius: 8px;
     }
+
+    /* 预览区域样式 */
+    .preview-section{
+      margin-top: 40px;
+      padding: 30px;
+      background: #f8f9ff;
+      border-radius: 15px;
+      border: 2px solid #667eea30;
+      display: none;
+    }
+    .preview-section.active{
+      display: block;
+      animation: fadeIn 0.5s ease-in;
+    }
+    @keyframes fadeIn{
+      from{ opacity: 0; transform: translateY(20px); }
+      to{ opacity: 1; transform: translateY(0); }
+    }
+    .preview-title{
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      color: #667eea;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    .preview-title::before{
+      content: "👁️";
+      font-size: 24px;
+    }
+    /* 优化后的预览容器 */
+    .preview-container {
+      background: #f0f0f0;
+      border-radius: 10px;
+      padding: 15px;
+      min-height: 600px;
+      box-shadow: inset 0 0 10px rgba(0,0,0,0.1);
+      overflow: auto; /* 关键：允许内部滚动 */
+      display: block; /* 恢复块级布局 */
+    }
+
+    /* 强制覆盖 docx-preview 内部样式 */
+    .preview-container .docx-wrapper {
+      background-color: white !important;
+      padding: 40px !important; /* 模拟 A4 边距 */
+      margin: 0 auto;
+      width: fit-content !important; /* 关键：随内容宽度自适应 */
+      min-width: 800px; /* 保证 A4 基础宽度 */
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    }
+
+    /* 表格渲染修正 */
+    .preview-container .docx-wrapper table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+      table-layout: auto !important; /* 允许根据文字自动调整列宽，防止挤压 */
+      word-break: break-all !important; /* 强制换行防止撑破表格 */
+    }
+
+    .preview-container .docx-wrapper td {
+      border: 1px solid #000 !important; /* 增强边框可见度 */
+      min-width: 20px;
+    }
+    .preview-note{
+      text-align: center;
+      color: #999;
+      padding: 60px 20px;
+    }
+    .loading-spinner{
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-right: 10px;
+    }
+    @keyframes spin{
+      0%{ transform: rotate(0deg); }
+      100%{ transform: rotate(360deg); }
+    }
+    .confirm-download{
+      margin-top: 20px;
+      padding: 20px;
+      background: #e8f4f8;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+    }
+    .confirm-download p{
+      margin: 0 0 15px 0;
+      color: #555;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* DOCX 预览自定义样式 */
+    .preview-container .docx-wrapper{
+      padding: 20px !important;
+      background-color: #f8f9fa !important;
+      min-width: 100% !important;
+    }
+
+    /* 表格样式优化 */
+    .preview-container .docx-wrapper table{
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      word-wrap: break-word !important;
+      border-collapse: collapse !important;
+    }
+
+    .preview-container .docx-wrapper table td{
+      padding: 8px 12px !important;
+      border: 1px solid #ddd !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+    }
+
+    .preview-container .docx-wrapper table th{
+      padding: 8px 12px !important;
+      border: 1px solid #ddd !important;
+      background-color: #f0f0f0 !important;
+      font-weight: bold !important;
+      text-align: center !important;
+    }
+
+    /* 段落和标题样式 */
+    .preview-container .docx-wrapper h1,
+    .preview-container .docx-wrapper h2,
+    .preview-container .docx-wrapper h3{
+      color: #333 !important;
+      margin: 16px 0 8px 0 !important;
+      page-break-after: avoid !important;
+    }
+
+    .preview-container .docx-wrapper p{
+      margin: 8px 0 !important;
+      line-height: 1.6 !important;
+      color: #444 !important;
+    }
+
+    /* 响应式表格（在小屏幕上滚动） */
+    .preview-container{
+      overflow-x: auto !important;
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* 当表格太宽时自动缩小字体 */
+    .preview-container .docx-wrapper table{
+      font-size: 12px !important;
+    }
+
+    /* 滚动条样式优化 */
+    .preview-container::-webkit-scrollbar{
+      width: 10px;
+      height: 10px;
+    }
+    .preview-container::-webkit-scrollbar-track{
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    .preview-container::-webkit-scrollbar-thumb{
+      background: #667eea;
+      border-radius: 10px;
+    }
+    .preview-container::-webkit-scrollbar-thumb:hover{
+      background: #5568d3;
+    }
   </style>
+  <!-- 动态加载依赖库 -->
   <script>
+    // 先加载 jszip 依赖
+    const loadJSZip = () => {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js';
+        script.onload = () => {
+          console.log('✅ jszip 依赖加载成功');
+          resolve();
+        };
+        script.onerror = () => {
+          console.warn('❌ jszip 加载失败，尝试 unpkg...');
+          const script2 = document.createElement('script');
+          script2.src = 'https://unpkg.com/jszip@3.10.1/dist/jszip.min.js';
+          script2.onload = () => {
+            console.log('✅ jszip 从 unpkg 加载成功');
+            resolve();
+          };
+          script2.onerror = () => reject(new Error('jszip 加载失败'));
+          document.head.appendChild(script2);
+        };
+        document.head.appendChild(script);
+      });
+    };
+
+    // 多个 CDN 源备选
+    const cdnSources = [
+      'https://cdn.jsdelivr.net/npm/docx-preview@0.3.7/dist/docx-preview.min.js',
+      'https://unpkg.com/docx-preview@0.3.7/dist/docx-preview.min.js',
+      'https://cdn.jsdelivr.net/npm/docx-preview@latest/dist/docx-preview.min.js'
+    ];
+
+    let cdnIndex = 0;
+    let docxLoading = false;
+
+    function loadDocxFromCDN() {
+      return new Promise((resolve, reject) => {
+        console.log('🚀 开始加载 docx-preview 依赖...');
+
+        // 先加载 jszip
+        loadJSZip().then(() => {
+          console.log('✅ jszip 依赖加载完成，开始加载 docx-preview...');
+
+          if (cdnIndex >= cdnSources.length) {
+            reject(new Error('所有 CDN 源都无法加载 docx-preview 库'));
+            return;
+          }
+
+          const script = document.createElement('script');
+          script.src = cdnSources[cdnIndex];
+          script.async = true;
+
+          script.onload = () => {
+            console.log(`✅ 从 CDN ${cdnIndex + 1} 加载 docx-preview 成功`);
+            console.log('  - 原始 docx 变量:', typeof docx);
+            console.log('  - window.docx:', typeof window.docx);
+
+            // 等待一小段时间确保全局变量更新
+            setTimeout(() => {
+              // 详细检查 docx 对象结构
+              console.log('详细检查:');
+              console.log('  - docx:', docx);
+              console.log('  - window.docx:', window.docx);
+              console.log('  - window.docx.renderAsync:', typeof window.docx?.renderAsync);
+              console.log('  - docx.renderAsync:', typeof docx?.renderAsync);
+              console.log('  - window.docx.loadAsync:', typeof window.docx?.loadAsync);
+              console.log('  - docx.loadAsync:', typeof docx?.loadAsync);
+              console.log('  - JSZip:', typeof JSZip);
+
+              // 确保 docx 库加载到全局变量
+              if (typeof docx !== 'undefined') {
+                window.docx = docx;
+                console.log('✅ docx 变量已设置到 window.docx');
+                resolve(docx);
+              } else if (typeof window.docx !== 'undefined') {
+                console.log('✅ 使用 window.docx');
+                resolve(window.docx);
+              } else {
+                console.error('❌ docx 变量未定义');
+                reject(new Error('docx 变量未定义'));
+              }
+            }, 100);
+          };
+
+          script.onerror = () => {
+            console.warn(`❌ CDN ${cdnIndex + 1} 加载失败，尝试下一个...`);
+            cdnIndex++;
+            loadDocxFromCDN().then(resolve).catch(reject);
+          };
+
+          // 设置超时
+          setTimeout(() => {
+            if (!script.dataset.loaded) {
+              script.onerror();
+            }
+          }, 10000);
+
+          document.head.appendChild(script);
+        }).catch(err => {
+          console.error('❌ jszip 加载失败:', err);
+          reject(err);
+        });
+      });
+    }
+
+    // 立即开始加载库
+    loadDocxFromCDN().catch(err => {
+      console.error('❌ docx-preview 库加载失败:', err);
+    });
+
     // 检查登录状态
     const token = localStorage.getItem('token');
     const username = localStorage.getItem('username');
@@ -197,7 +554,85 @@
       window.location.href = '/login';
     }
 
-    async function submitForm(e){
+    let currentPreviewData = null;
+
+    // 等待 docx-preview 库加载
+    function waitForDocxLibrary(maxAttempts = 100) {
+      return new Promise((resolve, reject) => {
+        let attempts = 0;
+        console.log('等待 docx-preview 库加载...');
+
+        const checkInterval = setInterval(() => {
+          attempts++;
+
+          // 检查依赖
+          console.log('依赖检查 (尝试 ' + attempts + '):');
+          console.log('  - JSZip:', typeof JSZip);
+          console.log('  - window.docx:', typeof window.docx);
+          console.log('  - docx:', typeof docx);
+
+          // 优先检查 window.docx（全局变量）
+          let docxLib = null;
+
+          // 尝试从各种可能的全局变量获取
+          if (typeof window !== 'undefined' && window.docx) {
+            if (typeof window.docx.renderAsync === 'function') {
+              docxLib = window.docx;
+              console.log('✅ 从 window.docx 获取到库（renderAsync 可用）');
+            } else {
+              console.log('⚠️ window.docx 存在但无 renderAsync:', window.docx);
+            }
+          } else if (typeof docx !== 'undefined') {
+            if (typeof docx.renderAsync === 'function') {
+              docxLib = docx;
+              console.log('✅ 从 docx 全局变量获取到库（renderAsync 可用）');
+            } else {
+              console.log('⚠️ docx 存在但无 renderAsync:', docx);
+            }
+          } else if (typeof globalThis !== 'undefined' && globalThis.docx && typeof globalThis.docx.renderAsync === 'function') {
+            docxLib = globalThis.docx;
+            console.log('✅ 从 globalThis.docx 获取到库（renderAsync 可用）');
+          }
+
+          if (docxLib) {
+            // 检查 JSZip 是否可用
+            if (typeof JSZip === 'undefined') {
+              console.log('⚠️ JSZip 未加载，等待...');
+              return;
+            }
+
+            clearInterval(checkInterval);
+            console.log('✅ 所有依赖加载成功！');
+            console.log('  - docx-preview:', typeof docxLib.renderAsync);
+            console.log('  - JSZip:', typeof JSZip);
+            resolve(docxLib);
+          } else if (attempts >= maxAttempts) {
+            clearInterval(checkInterval);
+            console.error('❌ docx-preview 库加载失败');
+            console.error('  - JSZip:', typeof JSZip);
+            console.error('  - window.docx:', typeof window.docx, window.docx);
+            console.error('  - docx:', typeof docx, docx);
+            console.error('  - globalThis.docx:', typeof globalThis && globalThis.docx ? typeof globalThis.docx : 'undefined', globalThis?.docx);
+
+            // 显示详细错误信息和解决方案
+            const errorMsg = '依赖加载失败！\n\n' +
+              `JSZip: ${typeof JSZip}\n` +
+              `docx: ${typeof docx}\n` +
+              `window.docx: ${typeof window.docx}\n\n` +
+              '可能的解决方案：\n' +
+              '1. 刷新页面 (F5)\n' +
+              '2. 清除浏览器缓存\n' +
+              '3. 检查网络连接\n' +
+              '4. 尝试使用其他浏览器';
+
+            alert(errorMsg);
+            reject(new Error('依赖加载超时'));
+          }
+        }, 100);
+      });
+    }
+
+    async function generatePreview(e){
       e.preventDefault();
       const token = localStorage.getItem('token');
       if (!token) {
@@ -225,10 +660,12 @@
       fd.append('docx', docx);
       fd.append('user_info_text', userInfoText);
       fd.append('auth_token', token);
+      fd.append('preview', 'true');  // 开启预览模式
 
-      const btn = document.getElementById('submit');
+      const btn = document.getElementById('preview-btn');
+      const originalText = btn.textContent;
       btn.disabled = true;
-      btn.textContent = '处理中...';
+      btn.innerHTML = '<span class="loading-spinner"></span>生成预览中...';
 
       try{
         const res = await fetch('/api/process', {
@@ -240,7 +677,185 @@
         });
 
         if(!res.ok){
-          let errorMessage = '处理失败';
+          let errorMessage = '预览生成失败';
+          try {
+            const errorData = await res.json();
+            errorMessage = errorData.error || JSON.stringify(errorData);
+          } catch (e) {
+            const errorText = await res.text();
+            errorMessage = errorText || `HTTP ${res.status}`;
+          }
+          throw new Error(errorMessage);
+        }
+
+        const result = await res.json();
+        if(result.success && result.mode === 'preview'){
+          // 保存预览数据
+          currentPreviewData = {
+            docx: docx,
+            userInfoText: userInfoText,
+            base64: result.data,
+            filename: result.filename
+          };
+
+          // 显示预览区域
+          const previewSection = document.querySelector('.preview-section');
+          previewSection.classList.add('active');
+
+          // 清空预览容器
+          const previewContainer = document.getElementById('preview-container');
+          previewContainer.innerHTML = '<div class="preview-note"><span class="loading-spinner"></span>正在渲染预览...</div>';
+
+          // 将 base64 转换为 Blob
+          const byteCharacters = atob(result.data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+
+          // 使用 docx-preview 渲染
+          try{
+            // 清空容器并显示加载提示
+            previewContainer.innerHTML = '<div class="preview-note"><span class="loading-spinner"></span>正在加载 docx-preview 库...</div>';
+
+            // 等待 docx-preview 库加载
+            const docxLib = await waitForDocxLibrary();
+
+            // 更新加载提示
+            previewContainer.innerHTML = '<div class="preview-note"><span class="loading-spinner"></span>正在渲染预览...</div>';
+
+            // 等待一小段时间确保 DOM 更新
+            await new Promise(resolve => setTimeout(resolve, 200));
+
+            // 使用 docx-preview 渲染
+            console.log('准备渲染...');
+            console.log('  - blob:', blob);
+            console.log('  - container:', previewContainer);
+            console.log('  - lib:', docxLib);
+
+            // 尝试不同的 API 格式
+            try {
+              // 格式1: renderAsync(data, container, options)
+              await docxLib.renderAsync(blob, previewContainer, {
+                className: 'docx',
+                inWrapper: true,
+                ignoreWidth: false,      // 关键：必须为 false，以保留 Word 原有宽度
+                ignoreHeight: false,
+                ignoreFonts: false,
+                breakPages: true,        // 开启分页，更接近真实效果
+                trimXmlDeclaration: true,
+                debug: true  // 启用调试模式查看详细日志
+              });
+            } catch (err1) {
+              console.warn('格式1失败，尝试格式2...', err1);
+              try {
+                // 格式2: renderAsync(data, container, styles, options)
+                await docxLib.renderAsync(blob, previewContainer, null, {
+                  className: 'docx',
+                  inWrapper: true,
+                  ignoreWidth: false,      // 关键：必须为 false，以保留 Word 原有宽度
+                  ignoreHeight: false,
+                  ignoreFonts: false,
+                  breakPages: true,        // 开启分页，更接近真实效果
+                  trimXmlDeclaration: true,
+                  debug: true
+                });
+              } catch (err2) {
+                console.warn('格式2失败，尝试格式3...', err2);
+                try {
+                  // 格式3: 直接传递文件对象
+                  const file = new File([blob], 'document.docx', { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+                  await docxLib.renderAsync(file, previewContainer, {
+                    className: 'docx',
+                    inWrapper: true,
+                    ignoreWidth: false,      // 关键：必须为 false，以保留 Word 原有宽度
+                    ignoreHeight: false,
+                    ignoreFonts: false,
+                    breakPages: true,        // 开启分页，更接近真实效果
+                    trimXmlDeclaration: true,
+                    debug: true
+                  });
+                } catch (err3) {
+                  console.error('所有格式都失败', err3);
+                  throw err3;
+                }
+              }
+            }
+
+            console.log('预览渲染完成');
+
+            // 稳妥的"宽度自适应"逻辑
+            setTimeout(() => {
+              const wrapper = previewContainer.querySelector('.docx-wrapper');
+              if (wrapper) {
+                // 如果内部表格总宽度超过了容器，允许横向滚动，不强制缩小
+                // 这样可以保证用户通过滚动条看到 100% 完整的信息
+                wrapper.style.margin = "0 auto";
+                console.log('应用宽度自适应逻辑 - 居中显示，允许滚动查看完整内容');
+              }
+            }, 200);
+
+            // 显示下载按钮
+            document.getElementById('download-btn').style.display = 'block';
+
+            // 滚动到预览区域
+            previewSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            btn.textContent = '✅ 预览已生成';
+            setTimeout(() => {
+              btn.textContent = originalText;
+              btn.disabled = false;
+            }, 2000);
+          } catch(renderError){
+            console.error('预览渲染失败:', renderError);
+            previewContainer.innerHTML = '<div class="preview-note" style="color: #e74c3c;">❌ 预览渲染失败: ' + (renderError.message || renderError) + '</div><br><div style="color: #666; font-size: 13px; text-align: left; margin-top: 10px;">请检查：<br>1. 文件是否为有效的 DOCX 格式<br>2. 浏览器控制台(F12)是否有详细错误信息<br>3. 尝试刷新页面后重新预览</div>';
+            btn.disabled = false;
+            btn.textContent = originalText;
+            throw renderError;
+          }
+        } else {
+          throw new Error(result.message || '预览生成失败');
+        }
+      }catch(err){
+        console.error('预览错误:', err);
+        alert('❌ 预览失败：' + err.message + '\n\n请查看浏览器控制台(F12)获取更多详细信息');
+        btn.textContent = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    async function downloadFile(){
+      if(!currentPreviewData){
+        alert('请先生成预览');
+        return;
+      }
+
+      const btn = document.getElementById('download-btn');
+      const originalText = btn.textContent;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loading-spinner"></span>准备下载...';
+
+      try{
+        const token = localStorage.getItem('token');
+
+        const fd = new FormData();
+        fd.append('docx', currentPreviewData.docx);
+        fd.append('user_info_text', currentPreviewData.userInfoText);
+        fd.append('auth_token', token);
+        // 注意：这里不传 preview 参数，使用默认下载模式
+
+        const res = await fetch('/api/process', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: fd
+        });
+
+        if(!res.ok){
+          let errorMessage = '下载失败';
           try {
             const errorData = await res.json();
             errorMessage = errorData.error || JSON.stringify(errorData);
@@ -261,45 +876,48 @@
         a.remove();
         URL.revokeObjectURL(url);
 
-        // 显示成功消息
-        btn.textContent = '✅ 处理成功！';
+        btn.textContent = '✅ 下载成功！';
         setTimeout(() => {
+          btn.textContent = originalText;
           btn.disabled = false;
-          btn.textContent = '生成 Word 文件';
         }, 2000);
       }catch(err){
-        console.error('处理错误:', err);
-        alert('❌ 出错：' + err.message + '\n\n请查看浏览器控制台(F12)获取更多详细信息');
+        console.error('下载错误:', err);
+        alert('❌ 下载失败：' + err.message);
+        btn.textContent = originalText;
         btn.disabled = false;
-        btn.textContent = '生成 Word 文件';
       }
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('form').addEventListener('submit', submitForm);
+      document.getElementById('preview-btn').addEventListener('click', generatePreview);
+      document.getElementById('download-btn').addEventListener('click', downloadFile);
     });
   </script>
 </head>
 <body>
   <div class="container">
     <div class="card">
-      <h1>🚀 智能填表助手</h1>
-      <div class="subtitle">AI驱动的Word文档自动填写系统</div>
+      <!-- 左侧：表单区域 -->
+      <div class="form-section">
+        <h1>🚀 智能填表助手</h1>
+        <div class="subtitle">AI驱动的Word文档自动填写系统</div>
 
-      <form id="form">
-        <label>📄 上传 Word 模板</label>
-        <input id="docx" type="file" accept=".docx" required>
-        <div class="note">表格中的空单元格将自动预置为 {1}, {2}, {3}...</div>
+        <form id="form">
+          <label>📄 上传 Word 模板</label>
+          <input id="docx" type="file" accept=".docx" required>
+          <div class="note">表格中的空单元格将自动预置为 {1}, {2}, {3}...</div>
 
-        <label>📝 上传个人资料文件</label>
-        <input id="user_info" type="file" accept=".txt" required>
-        <div class="note">请上传包含个人信息的txt文件，如姓名、联系方式、教育经历等</div>
+          <label>📝 上传个人资料文件</label>
+          <input id="user_info" type="file" accept=".txt" required>
+          <div class="note">请上传包含个人信息的txt文件，如姓名、联系方式、教育经历等</div>
 
-        <div class="actions">
-          <button id="submit" type="submit">✨ 生成 Word 文件</button>
-        </div>
+          <div class="actions">
+            <button id="preview-btn" type="button">👁️ 生成预览</button>
+          </div>
+        </form>
 
-        <div class="feedback-link">
+        <div class="feedback-link" style="margin-top: 30px;">
           <a href="/feedback">💬 意见反馈</a>
         </div>
 
@@ -307,7 +925,21 @@
           ℹ️ 服务端需已配置环境变量 ARK_API_KEY<br>
           如需更换模型可设置 MODEL_ENDPOINT
         </div>
-      </form>
+      </div>
+
+      <!-- 右侧：预览区域 -->
+      <div class="preview-section-wrapper">
+        <div class="preview-section">
+          <div class="preview-title">文档预览</div>
+          <div class="preview-container" id="preview-container">
+            <div class="preview-note">请点击"生成预览"按钮查看填写后的文档效果</div>
+          </div>
+          <div class="confirm-download">
+            <p><strong>💡 提示：</strong>预览确认无误后，点击下方按钮下载最终文件</p>
+            <button id="download-btn" type="button">⬇️ 确认并下载</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </body>
