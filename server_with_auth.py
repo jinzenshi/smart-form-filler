@@ -43,7 +43,33 @@ if os.path.exists("static"):
 # 初始化数据库
 init_db()
 
-# Token 验证函数
+# Token 验证函数（仅查看余额，不检查余额充足性）
+async def verify_token_for_balance(request: Request, db: Session = Depends(get_db)):
+    """Token登录验证中间件 - 仅用于查看余额，不检查余额是否充足"""
+    auth_header = request.headers.get('Authorization', '')
+
+    # 检查是否是Bearer token
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return None
+
+    token = auth_header.split(' ', 1)[1]
+
+    # 查找token用户
+    user = db.query(SimpleUser).filter(
+        SimpleUser.token == token,
+        SimpleUser.is_active == True
+    ).first()
+
+    if not user:
+        return None
+
+    # 检查过期时间（即使查看余额，过期了也不能查看）
+    if user.expires_at and user.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=403, detail="Token已过期")
+
+    return user
+
+# Token 验证函数（完整验证，包括余额检查）
 async def verify_token_auth(request: Request, db: Session = Depends(get_db)):
     """Token登录验证中间件"""
     auth_header = request.headers.get('Authorization', '')
@@ -736,9 +762,9 @@ async def get_files(
 
 @app.get("/api/token/balance")
 async def get_token_balance(
-    token_user: SimpleUser = Depends(verify_token_auth)
+    token_user: SimpleUser = Depends(verify_token_for_balance)
 ):
-    """获取Token用户余额"""
+    """获取Token用户余额（不检查余额是否充足）"""
     return {
         "balance": token_user.balance,
         "total_balance": token_user.total_balance,
@@ -765,6 +791,9 @@ async def generate_tokens(
 
     import secrets
 
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/') if request else "https://smart-form-filler-1.onrender.com"
+
     tokens = []
     for _ in range(count):
         # 生成32位随机字符串
@@ -780,7 +809,7 @@ async def generate_tokens(
         db.add(token_user)
         tokens.append({
             "token": new_token,
-            "link": f"https://smart-form-filler-1.onrender.com/?t={new_token}",
+            "link": f"{base_url}/?t={new_token}",
             "balance": balance,
             "expires_at": expires_at.isoformat()
         })
@@ -922,7 +951,8 @@ async def batch_delete_simple_users(
 async def export_simple_users(
     tokens: Optional[list] = Body(None),
     db: Session = Depends(get_db),
-    auth_result: dict = Depends(get_authenticated_user)
+    auth_result: dict = Depends(get_authenticated_user),
+    request: Request = None
 ):
     """导出Token列表为CSV（仅管理员）"""
     # 检查是否是管理员
@@ -939,10 +969,13 @@ async def export_simple_users(
     else:
         users = db.query(SimpleUser).order_by(SimpleUser.created_at.desc()).all()
 
+    # 获取基础URL
+    base_url = str(request.base_url).rstrip('/') if request else "https://smart-form-filler-1.onrender.com"
+
     # 生成CSV内容
     csv_lines = ["Token,余额,总余额,创建时间,过期时间,链接"]
     for user in users:
-        link = f"https://smart-form-filler-1.onrender.com/?t={user.token}"
+        link = f"{base_url}/?t={user.token}"
         expires = user.expires_at.isoformat() if user.expires_at else "永不过期"
         created = user.created_at.isoformat()
         csv_lines.append(f'"{user.token}",{user.balance},{user.total_balance},"{created}","{expires}","{link}"')

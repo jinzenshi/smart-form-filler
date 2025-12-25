@@ -539,14 +539,36 @@
       console.error('❌ docx-preview 库加载失败:', err);
     });
 
-    // 检查登录状态
-    const token = localStorage.getItem('token');
+    // === 统一的身份验证逻辑 ===
+    (function handleAuthentication() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenFromUrl = urlParams.get('t');
+
+      // 1. 优先处理 URL 传来的新 Token
+      if (tokenFromUrl) {
+        localStorage.setItem('user_token', tokenFromUrl);
+        console.log('🔑 Token登录成功:', tokenFromUrl.substring(0, 8) + '...');
+        // 立即清理 URL 避免刷新时重复触发，但不要跳转
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      // 2. 检查本地存储中是否存在任一有效 Token
+      const token = localStorage.getItem('token');
+      const userToken = localStorage.getItem('user_token');
+
+      // 3. 只有当两者都不存在时，才跳转到登录页
+      if (!token && !userToken) {
+        console.log('🚫 无有效凭证，跳转登录');
+        window.location.href = '/login';
+        return;
+      }
+
+      console.log('✅ 身份验证通过');
+    })();
+
+    // 获取其他用户信息
     const username = localStorage.getItem('username');
     const isAdmin = localStorage.getItem('is_admin') === 'true';
-
-    if (!token) {
-      window.location.href = '/login';
-    }
 
     // 显示用户信息
     window.addEventListener('DOMContentLoaded', () => {
@@ -562,10 +584,14 @@
         `;
         document.body.appendChild(userInfoDiv);
       }
+
+      // 显示Token余额信息
+      showTokenBalance();
     });
 
     function logout() {
       localStorage.removeItem('token');
+      localStorage.removeItem('user_token');
       localStorage.removeItem('username');
       localStorage.removeItem('is_admin');
       window.location.href = '/login';
@@ -855,6 +881,10 @@
         URL.revokeObjectURL(url);
 
         btn.textContent = '✅ 下载成功！';
+
+        // 更新余额显示（只有Token用户才需要）
+        showTokenBalance();
+
         setTimeout(() => {
           btn.textContent = originalText;
           btn.disabled = false;
@@ -868,22 +898,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', () => {
-      // Token 检测和存储
-      const urlParams = new URLSearchParams(window.location.search);
-      const tokenFromUrl = urlParams.get('t');
-
-      if (tokenFromUrl) {
-        // 发现URL中有token，存入localStorage
-        localStorage.setItem('user_token', tokenFromUrl);
-        console.log('🔑 Token登录成功:', tokenFromUrl.substring(0, 8) + '...');
-
-        // 清理URL参数
-        window.history.replaceState({}, document.title, "/");
-
-        // 显示Token余额信息
-        showTokenBalance();
-      }
-
+      // 绑定按钮事件
       document.getElementById('preview-btn').addEventListener('click', generatePreview);
       document.getElementById('download-btn').addEventListener('click', downloadFile);
     });

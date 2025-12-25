@@ -874,7 +874,7 @@ IP: ${log.ip_address || '-'}</pre>
           tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #999;">暂无Token</td></tr>';
         } else {
           tbody.innerHTML = users.map(user => {
-            const link = `https://smart-form-filler-1.onrender.com/?t=${user.token}`;
+            const link = `${window.location.origin}/?t=${user.token}`;
             const isExpired = user.expires_at && new Date(user.expires_at) < new Date();
             const status = isExpired ? '已过期' : (user.balance > 0 ? '正常' : '余额不足');
 
