@@ -328,8 +328,8 @@ async def process(
                 # 没有 fill_data，调用 AI 推理
                 output_bytes = fill_form(docx_bytes, user_info_text, None)
 
-        # 如果是Token用户，扣减余额
-        if user_type == "token":
+        # 如果是Token用户，只有在首次下载文件时扣减余额（预览模式和重复下载不扣减）
+        if user_type == "token" and preview != 'true' and not fill_data:
             user.balance -= 1
             db.commit()
             print(f"💰 Token用户 {username} 余额剩余: {user.balance}")
@@ -780,7 +780,7 @@ async def generate_tokens(
         db.add(token_user)
         tokens.append({
             "token": new_token,
-            "link": f"http://localhost:8000/?t={new_token}",
+            "link": f"https://smart-form-filler-1.onrender.com/?t={new_token}",
             "balance": balance,
             "expires_at": expires_at.isoformat()
         })
@@ -942,7 +942,7 @@ async def export_simple_users(
     # 生成CSV内容
     csv_lines = ["Token,余额,总余额,创建时间,过期时间,链接"]
     for user in users:
-        link = f"http://localhost:8000/?t={user.token}"
+        link = f"https://smart-form-filler-1.onrender.com/?t={user.token}"
         expires = user.expires_at.isoformat() if user.expires_at else "永不过期"
         created = user.created_at.isoformat()
         csv_lines.append(f'"{user.token}",{user.balance},{user.total_balance},"{created}","{expires}","{link}"')
