@@ -635,7 +635,7 @@ IP: ${log.ip_address || '-'}</pre>
 
         const tbody = document.getElementById('tempAccountsTableBody');
         if (accounts.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">暂无临时账号</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #999;">暂无临时账号</td></tr>';
         } else {
           tbody.innerHTML = accounts.map(acc => {
             const isExpired = acc.is_expired;
@@ -643,9 +643,11 @@ IP: ${log.ip_address || '-'}</pre>
 
             return `
               <tr>
+                <td><input type="checkbox" class="temp-account-checkbox" value="${acc.username}"></td>
                 <td>
                   <strong>${acc.username}</strong>
                 </td>
+                <td><code style="font-size: 12px; color: #666;">${acc.password}</code></td>
                 <td>${new Date(acc.created_at).toLocaleString()}</td>
                 <td>${acc.expires_at ? new Date(acc.expires_at).toLocaleString() : '-'}</td>
                 <td>${daysRemaining !== null ? daysRemaining : '-'}</td>
@@ -666,6 +668,12 @@ IP: ${log.ip_address || '-'}</pre>
       } catch (error) {
         console.error('获取临时账号列表失败:', error);
         alert(`获取临时账号列表失败: ${error.message}`);
+      }
+
+      // 重置全选checkbox
+      const selectAllCheckbox = document.getElementById('selectAllTempAccounts');
+      if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
       }
     }
 
@@ -696,6 +704,311 @@ IP: ${log.ip_address || '-'}</pre>
         console.error('删除临时账号失败:', error);
         alert(`删除临时账号失败: ${error.message}`);
       }
+    }
+
+    async function batchDeleteTempAccounts() {
+      const checkboxes = document.querySelectorAll('.temp-account-checkbox:checked');
+      if (checkboxes.length === 0) {
+        alert('请选择要删除的临时账号');
+        return;
+      }
+
+      if (!confirm(`确定要删除选中的 ${checkboxes.length} 个临时账号吗？`)) {
+        return;
+      }
+
+      const usernames = Array.from(checkboxes).map(cb => cb.value);
+
+      try {
+        const res = await fetch('/api/admin/temp-accounts/batch-delete', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(usernames)
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          alert(`批量删除临时账号失败: ${errorText}`);
+          return;
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          alert(`成功删除 ${data.deleted_count} 个临时账号`);
+          fetchTempAccounts();
+          fetchStats();
+
+          // 重置全选checkbox
+          const selectAllCheckbox = document.getElementById('selectAllTempAccounts');
+          if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+          }
+        }
+      } catch (error) {
+        console.error('批量删除临时账号失败:', error);
+        alert(`批量删除临时账号失败: ${error.message}`);
+      }
+    }
+
+    async function exportTempAccounts() {
+      const checkboxes = document.querySelectorAll('.temp-account-checkbox:checked');
+      const usernames = checkboxes.length > 0
+        ? Array.from(checkboxes).map(cb => cb.value)
+        : []; // 空数组表示导出全部
+
+      try {
+        const res = await fetch('/api/admin/temp-accounts/export', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(usernames)
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          alert(`导出临时账号失败: ${errorText}`);
+          return;
+        }
+
+        const blob = await res.blob();
+        const url_obj = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url_obj;
+        a.download = `temp_accounts_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url_obj);
+        document.body.removeChild(a);
+      } catch (error) {
+        console.error('导出临时账号失败:', error);
+        alert(`导出临时账号失败: ${error.message}`);
+      }
+    }
+
+    // Token 管理函数
+    async function generateTokens() {
+      const count = parseInt(document.getElementById('tokenCount').value);
+      const balance = parseInt(document.getElementById('tokenBalance').value);
+      const daysValid = parseInt(document.getElementById('tokenDays').value);
+
+      if (!count || count < 1) {
+        alert('请输入有效的生成数量（1-100）');
+        return;
+      }
+
+      if (!balance || balance < 1) {
+        alert('请输入有效的余额（1-100）');
+        return;
+      }
+
+      if (!daysValid || daysValid < 1) {
+        alert('请输入有效的天数（1-365）');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/generate-tokens', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: `count=${count}&balance=${balance}&days_valid=${daysValid}`
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          alert(`生成Token失败: ${errorText}`);
+          return;
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          // 显示生成的Token信息
+          let tokenInfo = `✅ Token生成成功！\n\n`;
+          data.tokens.forEach((t, index) => {
+            tokenInfo += `${index + 1}. ${t.token}\n链接: ${t.link}\n余额: ${t.balance}\n过期时间: ${new Date(t.expires_at).toLocaleString()}\n\n`;
+          });
+          tokenInfo += `请复制保存Token信息！`;
+
+          alert(tokenInfo);
+
+          // 刷新列表
+          fetchTokens();
+          fetchStats();
+
+          // 重置全选checkbox
+          const selectAllCheckbox = document.getElementById('selectAllTokens');
+          if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+          }
+        }
+      } catch (error) {
+        console.error('生成Token失败:', error);
+        alert(`生成Token失败: ${error.message}`);
+      }
+    }
+
+    async function fetchTokens() {
+      try {
+        const res = await fetch('/api/admin/simple-users', {
+          headers: {'Authorization': `Bearer ${token}`}
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('获取Token列表失败:', errorText);
+          alert(`获取Token列表失败: ${errorText}`);
+          return;
+        }
+
+        const users = await res.json();
+
+        const tbody = document.getElementById('tokensTableBody');
+        if (users.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #999;">暂无Token</td></tr>';
+        } else {
+          tbody.innerHTML = users.map(user => {
+            const link = `http://localhost:8000/?t=${user.token}`;
+            const isExpired = user.expires_at && new Date(user.expires_at) < new Date();
+            const status = isExpired ? '已过期' : (user.balance > 0 ? '正常' : '余额不足');
+
+            return `
+              <tr>
+                <td><input type="checkbox" class="token-checkbox" value="${user.token}"></td>
+                <td><code>${user.token.substring(0, 16)}...</code></td>
+                <td>${user.balance} / ${user.total_balance}</td>
+                <td>${new Date(user.created_at).toLocaleString()}</td>
+                <td>${user.expires_at ? new Date(user.expires_at).toLocaleString() : '永不过期'}</td>
+                <td><a href="${link}" target="_blank">${link.substring(0, 30)}...</a></td>
+                <td>
+                  <button class="btn-small" onclick="copyToClipboard('${link}')">📋 复制链接</button>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+      } catch (error) {
+        console.error('获取Token列表失败:', error);
+        alert(`获取Token列表失败: ${error.message}`);
+      }
+
+      // 重置全选checkbox
+      const selectAllCheckbox = document.getElementById('selectAllTokens');
+      if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+      }
+    }
+
+    function copyToClipboard(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        alert('链接已复制到剪贴板！');
+      }).catch(() => {
+        alert('复制失败，请手动复制：\n' + text);
+      });
+    }
+
+    async function batchDeleteTokens() {
+      const checkboxes = document.querySelectorAll('.token-checkbox:checked');
+      if (checkboxes.length === 0) {
+        alert('请选择要删除的Token');
+        return;
+      }
+
+      if (!confirm(`确定要删除选中的 ${checkboxes.length} 个Token吗？`)) {
+        return;
+      }
+
+      const tokens = Array.from(checkboxes).map(cb => cb.value);
+
+      try {
+        const res = await fetch('/api/admin/simple-users/batch-delete', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(tokens)
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          alert(`批量删除Token失败: ${errorText}`);
+          return;
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          alert(`成功删除 ${data.deleted_count} 个Token`);
+          fetchTokens();
+          fetchStats();
+
+          // 重置全选checkbox
+          const selectAllCheckbox = document.getElementById('selectAllTokens');
+          if (selectAllCheckbox) {
+            selectAllCheckbox.checked = false;
+          }
+        }
+      } catch (error) {
+        console.error('批量删除Token失败:', error);
+        alert(`批量删除Token失败: ${error.message}`);
+      }
+    }
+
+    async function exportTokens() {
+      const checkboxes = document.querySelectorAll('.token-checkbox:checked');
+      const tokens = checkboxes.length > 0
+        ? Array.from(checkboxes).map(cb => cb.value)
+        : []; // 空数组表示导出全部
+
+      try {
+        const res = await fetch('/api/admin/simple-users/export', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(tokens)
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          alert(`导出Token失败: ${errorText}`);
+          return;
+        }
+
+        const blob = await res.blob();
+        const url_obj = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url_obj;
+        a.download = `tokens_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url_obj);
+        document.body.removeChild(a);
+      } catch (error) {
+        console.error('导出Token失败:', error);
+        alert(`导出Token失败: ${error.message}`);
+      }
+    }
+
+    function toggleAllTokens(checkbox) {
+      const checkboxes = document.querySelectorAll('.token-checkbox');
+      checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+      });
+    }
+
+    function toggleAllTempAccounts(checkbox) {
+      const checkboxes = document.querySelectorAll('.temp-account-checkbox');
+      checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+      });
     }
 
     async function fetchFiles() {
@@ -812,6 +1125,7 @@ IP: ${log.ip_address || '-'}</pre>
       fetchLogs();
       fetchFeedbacks();
       fetchTempAccounts();
+      fetchTokens();
       fetchFiles();
 
       // 点击模态框背景关闭
@@ -830,6 +1144,7 @@ IP: ${log.ip_address || '-'}</pre>
         fetchLogs();
         fetchFeedbacks();
         fetchTempAccounts();
+        fetchTokens();
         fetchFiles();
       }, 30000);
     });
@@ -910,17 +1225,25 @@ IP: ${log.ip_address || '-'}</pre>
           <input id="daysValid" type="number" value="7" min="1" max="365" style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; width: 100px;">
           <button class="btn" onclick="createTempAccount()">🎁 生成新账号</button>
           <button class="btn" onclick="fetchTempAccounts()">🔄 刷新列表</button>
-          <label style="display: flex; align-items: center; gap: 5px; margin-left: auto; cursor: pointer;">
-            <input type="checkbox" id="showExpired" onchange="fetchTempAccounts()">
-            显示已过期账号
-          </label>
+          <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+            <button class="btn btn-danger" onclick="batchDeleteTempAccounts()">🗑️ 批量删除</button>
+            <button class="btn" onclick="exportTempAccounts()">📥 批量下载</button>
+            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+              <input type="checkbox" id="showExpired" onchange="fetchTempAccounts()">
+              显示已过期账号
+            </label>
+          </div>
         </div>
       </div>
 
       <table>
         <thead>
           <tr>
+            <th style="width: 50px;">
+              <input type="checkbox" id="selectAllTempAccounts" onclick="toggleAllTempAccounts(this)">
+            </th>
             <th>用户名</th>
+            <th>密码</th>
             <th>创建时间</th>
             <th>过期时间</th>
             <th>剩余天数</th>
@@ -930,7 +1253,53 @@ IP: ${log.ip_address || '-'}</pre>
         </thead>
         <tbody id="tempAccountsTableBody">
           <tr>
-            <td colspan="6" style="text-align: center; color: #999;">点击"刷新列表"加载数据</td>
+            <td colspan="8" style="text-align: center; color: #999;">点击"刷新列表"加载数据</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Token 管理 -->
+    <div class="card">
+      <h2>🎫 Token 管理</h2>
+
+      <div style="margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+          <label>生成数量:
+            <input id="tokenCount" type="number" value="5" min="1" max="100" style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; width: 80px; margin-left: 5px;">
+          </label>
+          <label>余额:
+            <input id="tokenBalance" type="number" value="10" min="1" max="100" style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; width: 80px; margin-left: 5px;">
+          </label>
+          <label>有效期(天):
+            <input id="tokenDays" type="number" value="30" min="1" max="365" style="padding: 8px; border: 1px solid #ddd; border-radius: 5px; width: 80px; margin-left: 5px;">
+          </label>
+          <button class="btn" onclick="generateTokens()">🎫 生成 Token</button>
+          <button class="btn" onclick="fetchTokens()">🔄 刷新列表</button>
+          <div style="margin-left: auto; display: flex; gap: 10px;">
+            <button class="btn btn-danger" onclick="batchDeleteTokens()">🗑️ 批量删除</button>
+            <button class="btn" onclick="exportTokens()">📥 批量下载</button>
+          </div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 50px;">
+              <input type="checkbox" id="selectAllTokens" onclick="toggleAllTokens(this)">
+            </th>
+            <th>Token</th>
+            <th>余额</th>
+            <th>创建时间</th>
+            <th>过期时间</th>
+            <th>链接</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="tokensTableBody">
+          <tr>
+            <td colspan="7" style="text-align: center; color: #999;">点击"刷新列表"加载数据</td>
           </tr>
         </tbody>
       </table>

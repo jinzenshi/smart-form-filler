@@ -1,8 +1,8 @@
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Optional
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Request
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Request, Body
 from fastapi.responses import StreamingResponse, FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -11,7 +11,7 @@ import json
 
 # 导入核心模块
 from core import fill_form
-from models import init_db, User, OperationLog, Feedback, FileStorage, SessionLocal
+from models import init_db, User, OperationLog, Feedback, FileStorage, SessionLocal, SimpleUser
 from auth import (
     get_db, hash_password, verify_password, create_user,
     authenticate_user, log_operation, get_current_user, is_admin,
@@ -42,6 +42,70 @@ if os.path.exists("static"):
 
 # 初始化数据库
 init_db()
+
+# Token 验证函数
+async def verify_token_auth(request: Request, db: Session = Depends(get_db)):
+    """Token登录验证中间件"""
+    auth_header = request.headers.get('Authorization', '')
+
+    # 检查是否是Bearer token
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return None
+
+    token = auth_header.split(' ', 1)[1]
+
+    # 查找token用户
+    user = db.query(SimpleUser).filter(
+        SimpleUser.token == token,
+        SimpleUser.is_active == True
+    ).first()
+
+    if not user:
+        return None  # 返回None而不是抛出异常，让其他认证方式尝试
+
+    # 检查余额
+    if user.balance <= 0:
+        raise HTTPException(status_code=403, detail="余额不足，请联系管理员充值")
+
+    # 检查过期时间
+    if user.expires_at and user.expires_at < datetime.utcnow():
+        raise HTTPException(status_code=403, detail="Token已过期")
+
+    # 更新最后使用时间
+    user.last_used_at = datetime.utcnow()
+    db.commit()
+
+    return user
+
+# 包装函数来处理可选的用户认证
+async def get_optional_current_user(
+    request: Request,
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """获取当前用户，如果认证失败则返回None（不抛出异常）"""
+    try:
+        # 尝试获取认证信息
+        auth_header = request.headers.get('Authorization', '')
+        if not auth_header or not auth_header.startswith('Bearer '):
+            return None
+
+        token = auth_header.split(' ', 1)[1]
+        if not token or len(token) < 3:
+            return None
+
+        # token格式: username:timestamp:random
+        parts = token.split(':')
+        if len(parts) != 3:
+            return None
+
+        username = parts[0]
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            return None
+
+        return user
+    except:
+        return None
 
 @app.get("/")
 async def root():
@@ -126,21 +190,43 @@ async def login(username: str = Form(...), password: str = Form(...), db: Sessio
     except Exception as e:
         return {"success": False, "message": f"登录失败: {str(e)}"}
 
+async def get_authenticated_user(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    token_user: Optional[SimpleUser] = Depends(verify_token_auth)
+):
+    """双认证用户获取函数 - 支持用户名密码和Token两种方式"""
+    # 如果是Token用户，直接返回
+    if token_user:
+        return {"user": token_user, "type": "token", "username": token_user.token[:8] + "..."}
+
+    # 如果是普通用户，返回用户名
+    if current_user:
+        return {"user": current_user, "type": "normal", "username": current_user.username}
+
+    # 如果都没有，返回None
+    return None
+
 @app.post("/api/process")
 async def process(
     docx: UploadFile = File(...),
     user_info_text: str = Form(...),
-    auth_token: Optional[str] = Form(None),  # 从表单获取token
+    auth_token: Optional[str] = Form(None),  # 从表单获取token（保留兼容性）
     preview: Optional[str] = Form(None),  # 是否预览模式
     fill_data: Optional[str] = Form(None),  # 预览时返回的填充数据，下载时可直接使用
     db: Session = Depends(get_db),
     request: Request = None,
-    current_user: User = Depends(get_current_user)  # 使用标准的权限校验
+    auth_result: dict = Depends(get_authenticated_user)
 ):
-    """处理文档（需要认证）- 支持预览和下载两种模式"""
+    """处理文档（需要认证）- 支持预览和下载两种模式，双认证（用户名密码/Token）"""
     try:
-        username = current_user.username
-        user = current_user
+        if not auth_result:
+            raise HTTPException(status_code=401, detail="未认证，请登录或使用有效Token")
+
+        user = auth_result["user"]
+        user_type = auth_result["type"]
+        username = auth_result["username"]
 
         docx_bytes = await docx.read()
 
@@ -180,9 +266,9 @@ async def process(
             # 记录操作日志（获取日志ID用于关联文件记录）
             log_id = log_operation(
                 db,
-                user.username,
+                username,
                 "提交文档处理",
-                details=f"文件名: {docx.filename}",
+                details=f"文件名: {docx.filename}, 用户类型: {user_type}",
                 submitted_data=submitted_data,
                 ip_address=request.client.host if request else None
             )
@@ -190,7 +276,7 @@ async def process(
             # 保存文件信息到数据库
             # DOCX 文件记录
             db.add(FileStorage(
-                username=user.username,
+                username=username,
                 file_type="docx",
                 original_filename=docx.filename,
                 file_path=docx_path,
@@ -202,7 +288,7 @@ async def process(
 
             # 用户信息文件记录
             db.add(FileStorage(
-                username=user.username,
+                username=username,
                 file_type="user_info",
                 original_filename=f"{username}_user_info.txt",
                 file_path=user_info_path,
@@ -242,6 +328,16 @@ async def process(
                 # 没有 fill_data，调用 AI 推理
                 output_bytes = fill_form(docx_bytes, user_info_text, None)
 
+        # 如果是Token用户，扣减余额
+        if user_type == "token":
+            user.balance -= 1
+            db.commit()
+            print(f"💰 Token用户 {username} 余额剩余: {user.balance}")
+
+            # 如果余额为0，提示用户
+            if user.balance == 0:
+                print(f"⚠️ Token用户 {username} 余额已用完")
+
         # 直接下载模式
         headers = {"Content-Disposition": "attachment; filename=filled.docx"}
         return StreamingResponse(
@@ -254,15 +350,33 @@ async def process(
     except Exception as e:
         # 记录错误日志
         try:
-            if 'user' in locals():
-                log_operation(db, user.username, "文档处理失败", details=str(e), status='failed')
+            if 'username' in locals():
+                log_operation(db, username, "文档处理失败", details=str(e), status='failed')
         except:
             pass
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @app.get("/api/admin/users")
-async def get_users(db: Session = Depends(get_db), admin_user: User = Depends(is_admin)):
+async def get_users(
+    db: Session = Depends(get_db),
+    auth_result: dict = Depends(get_authenticated_user)
+):
     """获取用户列表（仅管理员）"""
+    # 检查是否是管理员
+    if not auth_result or auth_result["type"] != "normal":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    admin_user = auth_result["user"]
+    # 检查是否是管理员
+    if not auth_result or auth_result["type"] != "normal":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    admin_user = auth_result["user"]
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
     users = db.query(User).all()
     return [
         {
@@ -280,9 +394,24 @@ async def get_logs(
     username: Optional[str] = None,
     operation: Optional[str] = None,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(is_admin)
+    auth_result: dict = Depends(get_authenticated_user)
 ):
     """获取操作日志（仅管理员）"""
+    # 检查是否是管理员
+    if not auth_result or auth_result["type"] != "normal":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    admin_user = auth_result["user"]
+    # 检查是否是管理员
+    if not auth_result or auth_result["type"] != "normal":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    admin_user = auth_result["user"]
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
     import json
 
     query = db.query(OperationLog)
@@ -408,7 +537,7 @@ async def get_feedbacks(
     status: Optional[str] = None,
     feedback_type: Optional[str] = None,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(is_admin)
+    auth_result: dict = Depends(get_authenticated_user)
 ):
     """获取用户反馈（仅管理员）"""
     query = db.query(Feedback)
@@ -446,7 +575,7 @@ async def reply_feedback(
     feedback_id: int,
     admin_reply: str = Form(...),
     db: Session = Depends(get_db),
-    admin_user: User = Depends(is_admin)
+    auth_result: dict = Depends(get_authenticated_user)
 ):
     """回复用户反馈（仅管理员）"""
     feedback = db.query(Feedback).filter(Feedback.id == feedback_id).first()
@@ -461,7 +590,7 @@ async def reply_feedback(
     return {"success": True, "message": "回复已提交"}
 
 @app.get("/api/admin/stats")
-async def get_stats(db: Session = Depends(get_db), admin_user: User = Depends(is_admin)):
+async def get_stats(db: Session = Depends(get_db), auth_result: dict = Depends(get_authenticated_user)):
     """获取统计信息（仅管理员）"""
     total_users = db.query(User).count()
     total_logs = db.query(OperationLog).count()
@@ -490,17 +619,25 @@ async def get_stats(db: Session = Depends(get_db), admin_user: User = Depends(is
 async def create_temp_account(
     days_valid: int = Form(7),
     db: Session = Depends(get_db),
-    admin_user: User = Depends(is_admin)
+    auth_result: dict = Depends(get_authenticated_user)
 ):
     """创建临时账号（仅管理员）"""
+    # 检查是否是管理员
+    if not auth_result or auth_result["type"] != "normal":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    admin_user = auth_result["user"]
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
     account = create_temporary_account(db, days_valid=days_valid)
 
-    # 记录操作日志
+    # 记录操作日志（包含密码）
     log_operation(
         db,
         admin_user.username,
         "创建临时账号",
-        details=f"用户名: {account['username']}, 有效期: {days_valid}天"
+        details=f"用户名: {account['username']}, 密码: {account['password']}, 有效期: {days_valid}天"
     )
 
     return {
@@ -518,7 +655,7 @@ async def create_temp_account(
 async def get_temp_accounts(
     include_expired: bool = False,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(is_admin)
+    auth_result: dict = Depends(get_authenticated_user)
 ):
     """获取临时账号列表（仅管理员）"""
     query = db.query(User).filter(User.is_temporary == True)
@@ -528,9 +665,28 @@ async def get_temp_accounts(
 
     accounts = query.order_by(User.created_at.desc()).all()
 
+    # 查询所有创建临时账号的日志，以获取密码
+    logs = db.query(OperationLog).filter(
+        OperationLog.operation == "创建临时账号"
+    ).all()
+
+    # 创建密码映射
+    password_map = {}
+    for log in logs:
+        # 从details中提取用户名和密码
+        if "用户名:" in log.details and "密码:" in log.details:
+            try:
+                parts = log.details.split(", ")
+                username_part = parts[0].replace("用户名: ", "")
+                password_part = parts[1].replace("密码: ", "")
+                password_map[username_part] = password_part
+            except:
+                pass
+
     return [
         {
             "username": u.username,
+            "password": password_map.get(u.username, "未知（请联系管理员）"),
             "created_at": u.created_at.isoformat(),
             "expires_at": u.expires_at.isoformat() if u.expires_at else None,
             "is_expired": check_user_expired(u),
@@ -548,7 +704,7 @@ async def get_files(
     file_type: Optional[str] = None,
     username: Optional[str] = None,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(is_admin)
+    auth_result: dict = Depends(get_authenticated_user)
 ):
     """获取文件列表（仅管理员）"""
     query = db.query(FileStorage)
@@ -576,11 +732,100 @@ async def get_files(
         for f in files
     ]
 
+# ========== Token 用户相关 API ==========
+
+@app.get("/api/token/balance")
+async def get_token_balance(
+    token_user: SimpleUser = Depends(verify_token_auth)
+):
+    """获取Token用户余额"""
+    return {
+        "balance": token_user.balance,
+        "total_balance": token_user.total_balance,
+        "token": token_user.token[:8] + "..." if len(token_user.token) > 8 else token_user.token
+    }
+
+@app.post("/api/admin/generate-tokens")
+async def generate_tokens(
+    count: int = Form(10),
+    balance: int = Form(10),
+    days_valid: int = Form(30),
+    request: Request = None,
+    db: Session = Depends(get_db),
+    auth_result: dict = Depends(get_authenticated_user)
+):
+    """生成Token（管理员功能）"""
+    # 检查是否是管理员
+    if not auth_result or auth_result["type"] != "normal":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    admin_user = auth_result["user"]
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    import secrets
+
+    tokens = []
+    for _ in range(count):
+        # 生成32位随机字符串
+        new_token = secrets.token_hex(16)
+        expires_at = datetime.utcnow() + timedelta(days=days_valid)
+
+        token_user = SimpleUser(
+            token=new_token,
+            balance=balance,
+            total_balance=balance,
+            expires_at=expires_at
+        )
+        db.add(token_user)
+        tokens.append({
+            "token": new_token,
+            "link": f"http://localhost:8000/?t={new_token}",
+            "balance": balance,
+            "expires_at": expires_at.isoformat()
+        })
+
+    db.commit()
+
+    # 记录操作日志
+    log_operation(
+        db,
+        admin_user.username,
+        "生成Token",
+        details=f"生成{count}个Token，每个余额{balance}，有效期{days_valid}天",
+        ip_address=request.client.host if request else None
+    )
+
+    return {"success": True, "tokens": tokens}
+
+@app.get("/api/admin/simple-users")
+async def get_simple_users(
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    auth_result: dict = Depends(get_authenticated_user)
+):
+    """获取Token用户列表（仅管理员）"""
+    users = db.query(SimpleUser).order_by(SimpleUser.created_at.desc()).limit(limit).all()
+
+    return [
+        {
+            "id": u.id,
+            "token": u.token,
+            "balance": u.balance,
+            "total_balance": u.total_balance,
+            "created_at": u.created_at.isoformat(),
+            "last_used_at": u.last_used_at.isoformat() if u.last_used_at else None,
+            "expires_at": u.expires_at.isoformat() if u.expires_at else None,
+            "is_active": u.is_active
+        }
+        for u in users
+    ]
+
 @app.delete("/api/admin/files/{file_id}")
 async def delete_file(
     file_id: int,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(is_admin)
+    auth_result: dict = Depends(get_authenticated_user)
 ):
     """删除文件（仅管理员）"""
     file_record = db.query(FileStorage).filter(FileStorage.id == file_id).first()
@@ -608,9 +853,17 @@ async def delete_file(
 async def delete_temp_account(
     username: str,
     db: Session = Depends(get_db),
-    admin_user: User = Depends(is_admin)
+    auth_result: dict = Depends(get_authenticated_user)
 ):
     """删除临时账号（仅管理员）"""
+    # 检查是否是管理员
+    if not auth_result or auth_result["type"] != "normal":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    admin_user = auth_result["user"]
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
     user = db.query(User).filter(User.username == username, User.is_temporary == True).first()
     if not user:
         raise HTTPException(status_code=404, detail="临时账号不存在")
@@ -627,6 +880,184 @@ async def delete_temp_account(
     )
 
     return {"success": True, "message": "临时账号已删除"}
+
+# ==================== 批量操作 API ====================
+
+@app.post("/api/admin/simple-users/batch-delete")
+async def batch_delete_simple_users(
+    tokens: list = Body(...),
+    db: Session = Depends(get_db),
+    auth_result: dict = Depends(get_authenticated_user)
+):
+    """批量删除Token（仅管理员）"""
+    # 检查是否是管理员
+    if not auth_result or auth_result["type"] != "normal":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    admin_user = auth_result["user"]
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    # 删除Token
+    deleted_count = 0
+    for token in tokens:
+        user = db.query(SimpleUser).filter(SimpleUser.token == token).first()
+        if user:
+            db.delete(user)
+            deleted_count += 1
+
+    db.commit()
+
+    # 记录操作日志
+    log_operation(
+        db,
+        admin_user.username,
+        "批量删除Token",
+        details=f"删除了{deleted_count}个Token"
+    )
+
+    return {"success": True, "deleted_count": deleted_count}
+
+@app.post("/api/admin/simple-users/export")
+async def export_simple_users(
+    tokens: Optional[list] = Body(None),
+    db: Session = Depends(get_db),
+    auth_result: dict = Depends(get_authenticated_user)
+):
+    """导出Token列表为CSV（仅管理员）"""
+    # 检查是否是管理员
+    if not auth_result or auth_result["type"] != "normal":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    admin_user = auth_result["user"]
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    # 如果指定了tokens，只导出选中的
+    if tokens:
+        users = db.query(SimpleUser).filter(SimpleUser.token.in_(tokens)).order_by(SimpleUser.created_at.desc()).all()
+    else:
+        users = db.query(SimpleUser).order_by(SimpleUser.created_at.desc()).all()
+
+    # 生成CSV内容
+    csv_lines = ["Token,余额,总余额,创建时间,过期时间,链接"]
+    for user in users:
+        link = f"http://localhost:8000/?t={user.token}"
+        expires = user.expires_at.isoformat() if user.expires_at else "永不过期"
+        created = user.created_at.isoformat()
+        csv_lines.append(f'"{user.token}",{user.balance},{user.total_balance},"{created}","{expires}","{link}"')
+
+    csv_content = "\n".join(csv_lines)
+
+    return StreamingResponse(
+        iter([csv_content]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=tokens_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"}
+    )
+
+@app.post("/api/admin/temp-accounts/batch-delete")
+async def batch_delete_temp_accounts(
+    usernames: list = Body(...),
+    db: Session = Depends(get_db),
+    auth_result: dict = Depends(get_authenticated_user)
+):
+    """批量删除临时账号（仅管理员）"""
+    # 检查是否是管理员
+    if not auth_result or auth_result["type"] != "normal":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    admin_user = auth_result["user"]
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    # 删除临时账号
+    deleted_count = 0
+    for username in usernames:
+        user = db.query(User).filter(User.username == username, User.is_temporary == True).first()
+        if user:
+            db.delete(user)
+            deleted_count += 1
+
+    db.commit()
+
+    # 记录操作日志
+    log_operation(
+        db,
+        admin_user.username,
+        "批量删除临时账号",
+        details=f"删除了{deleted_count}个临时账号"
+    )
+
+    return {"success": True, "deleted_count": deleted_count}
+
+@app.post("/api/admin/temp-accounts/export")
+async def export_temp_accounts(
+    usernames: Optional[list] = Body(None),
+    db: Session = Depends(get_db),
+    auth_result: dict = Depends(get_authenticated_user)
+):
+    """导出临时账号列表为CSV（仅管理员）"""
+    # 检查是否是管理员
+    if not auth_result or auth_result["type"] != "normal":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    admin_user = auth_result["user"]
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    # 如果指定了usernames，只导出选中的
+    if usernames:
+        users = db.query(User).filter(
+            User.is_temporary == True,
+            User.username.in_(usernames)
+        ).order_by(User.created_at.desc()).all()
+    else:
+        users = db.query(User).filter(User.is_temporary == True).order_by(User.created_at.desc()).all()
+
+    # 查询所有创建临时账号的日志，以获取密码
+    logs = db.query(OperationLog).filter(
+        OperationLog.operation == "创建临时账号"
+    ).all()
+
+    # 创建密码映射
+    password_map = {}
+    for log in logs:
+        # 从details中提取用户名和密码
+        # 格式: "用户名: xxx, 密码: xxx, 有效期: xxx天"
+        if "用户名:" in log.details and "密码:" in log.details:
+            try:
+                parts = log.details.split(", ")
+                username_part = parts[0].replace("用户名: ", "")
+                password_part = parts[1].replace("密码: ", "")
+                password_map[username_part] = password_part
+            except:
+                pass
+
+    # 生成CSV内容
+    csv_lines = ["用户名,密码,创建时间,过期时间,剩余天数,状态"]
+    for user in users:
+        is_expired = check_user_expired(user)
+        days_remaining = (
+            max(0, (user.expires_at.replace(tzinfo=timezone.utc) - datetime.now(timezone.utc)).days)
+            if user.expires_at else None
+        )
+        status = "已过期" if is_expired else "有效"
+        created = user.created_at.isoformat()
+        expires = user.expires_at.isoformat() if user.expires_at else "-"
+
+        # 从映射中获取密码
+        password = password_map.get(user.username, "未知（请联系管理员）")
+        days_str = str(days_remaining) if days_remaining is not None else '-'
+
+        csv_lines.append(f'"{user.username}","{password}","{created}","{expires}",{days_str},"{status}"')
+
+    csv_content = "\n".join(csv_lines)
+
+    return StreamingResponse(
+        iter([csv_content]),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=temp_accounts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"}
+    )
 
 # 导出 app 变量，供 uvicorn 使用
 app_instance = app

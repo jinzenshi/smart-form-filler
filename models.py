@@ -12,6 +12,13 @@ from sqlalchemy.pool import StaticPool
 from datetime import datetime, timedelta
 import os
 
+# 加载环境变量
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
 Base = declarative_base()
 
 class User(Base):
@@ -25,6 +32,19 @@ class User(Base):
     expires_at = Column(DateTime, nullable=True)  # 账号有效期，NULL表示永不过期（管理员账号）
     is_admin = Column(Boolean, default=False)
     is_temporary = Column(Boolean, default=False)  # 是否为临时账号
+
+class SimpleUser(Base):
+    """简单用户表（支持Token登录）"""
+    __tablename__ = 'simple_users'
+
+    id = Column(Integer, primary_key=True, index=True)
+    token = Column(String(64), unique=True, index=True, nullable=False)  # 用户唯一标识
+    balance = Column(Integer, default=0)  # 剩余次数
+    total_balance = Column(Integer, default=0)  # 总次数
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_used_at = Column(DateTime, nullable=True)  # 最后使用时间
+    expires_at = Column(DateTime, nullable=True)  # 过期时间
+    is_active = Column(Boolean, default=True)  # 是否激活
 
 class OperationLog(Base):
     """操作日志表"""
@@ -80,21 +100,21 @@ def get_database_url():
     if os.getenv("DATABASE_URL"):
         return os.getenv("DATABASE_URL")
 
-    # 如果没有设置，则使用美国西部项目的 Supabase PostgreSQL Session Pooler
-    return "postgresql://postgres.uwajqrjmamoaccslzrzo:zzszzs996@aws-0-us-west-2.pooler.supabase.com:5432/postgres?sslmode=require"
+    # 临时使用SQLite测试Token功能
+    return "sqlite:///./test.db"
 
 DATABASE_URL = get_database_url()
 
 # 创建引擎 - 根据数据库类型选择配置
 if DATABASE_URL.startswith("postgresql"):
-    # PostgreSQL 配置 - 使用连接池优化性能（us-west-2 地区支持更大的 pool_size）
+    # PostgreSQL 配置 - 使用连接池优化性能（降低 pool_size 避免连接满）
     engine = create_engine(
         DATABASE_URL,
-        pool_size=20,       # 恢复更大的连接池（美国地区支持）
-        max_overflow=30,    # 恢复更大的最大溢出
+        pool_size=5,        # 降低连接池大小（Supabase Session Mode 限制）
+        max_overflow=10,    # 降低最大溢出
         pool_pre_ping=True,
-        pool_recycle=3600,  # 恢复标准连接回收时间
-        pool_timeout=30,    # 设置连接超时
+        pool_recycle=3600,  # 标准连接回收时间
+        pool_timeout=30,    # 连接超时
         echo=False  # 设置为 True 可以看到 SQL 日志
     )
 else:
