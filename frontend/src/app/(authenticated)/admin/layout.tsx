@@ -3,12 +3,12 @@ import { AdminTabs } from '@/components/admin/AdminTabs'
 import { ToastProvider } from '@/components/common/Toast'
 import { getCurrentUser } from '@/lib/auth'
 
-export default function AdminLayout({
+export default async function AdminLayout({
   children
 }: {
   children: React.ReactNode
 }) {
-  const { username } = getCurrentUser()
+  const { username } = await getCurrentUser()
 
   return (
     <ToastProvider>
