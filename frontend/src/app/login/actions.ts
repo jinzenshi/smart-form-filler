@@ -1,6 +1,7 @@
 'use server'
 
 import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 
 export async function loginAction(username: string, password: string) {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -18,13 +19,13 @@ export async function loginAction(username: string, password: string) {
   const data = await response.json()
 
   if (data.success && data.token) {
-    // Set cookies server-side so they're visible to SSR
+    // Set cookies server-side
     const cookieStore = await cookies()
     cookieStore.set('auth_token', data.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 days
+      maxAge: 60 * 60 * 24 * 7
     })
     cookieStore.set('username', data.username || username, {
       httpOnly: true,
@@ -33,7 +34,8 @@ export async function loginAction(username: string, password: string) {
       maxAge: 60 * 60 * 24 * 7
     })
 
-    return { success: true }
+    // Redirect to admin page
+    redirect('/admin')
   }
 
   return { error: data.message || '登录失败，请检查用户名和密码' }
