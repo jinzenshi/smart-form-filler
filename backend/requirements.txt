@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+python-docx
+pydantic
+passlib[bcrypt]
+python-multipart
+requests
+psycopg2-binary
+supabase>=2.3.0
