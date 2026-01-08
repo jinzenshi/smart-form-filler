@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { setAuthCookie } from '@/lib/auth'
+import { setAuthCookieClient } from '@/lib/auth-client'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -30,7 +30,7 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (data.success && data.token) {
-        await setAuthCookie(data.token, data.username || username)
+        setAuthCookieClient(data.token, data.username || username)
         router.push('/admin')
         router.refresh()
       } else {
