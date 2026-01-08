@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/Button'
-import { cn } from '@/lib/utils'
 import { useState } from 'react'
 
 interface AdminHeaderProps {
@@ -25,29 +24,29 @@ export function AdminHeader({ username }: AdminHeaderProps) {
   }
 
   return (
-    <header className="bg-white border-b sticky top-0 z-100">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-amber-600 text-xl">◇</span>
-          <h1 className="text-xl font-semibold text-gray-800">管理后台</h1>
+    <header className="admin-header">
+      <div className="admin-header-inner">
+        <div className="admin-header-brand">
+          <span className="brand-icon">◇</span>
+          <h1 className="brand-title">管理后台</h1>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="admin-header-actions">
           <button
             onClick={toggleTheme}
-            className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg"
+            className="theme-toggle"
           >
             {isDark ? '☀' : '☾'}
           </button>
 
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
+          <div className="header-meta">
+            <span className="header-user">
               管理员 · {username}
             </span>
-            <a href="/" className="text-sm text-gray-500 hover:text-gray-700">
+            <a href="/" className="header-link">
               返回工作台
             </a>
-            <Button variant="danger" size="sm" onClick={handleLogout}>
+            <Button variant="primary" size="sm" onClick={handleLogout}>
               退出
             </Button>
           </div>
