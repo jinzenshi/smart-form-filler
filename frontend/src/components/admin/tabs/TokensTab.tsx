@@ -39,7 +39,7 @@ export function TokensTab({ initialUsers }: TokensTabProps) {
     toast.success('已复制到剪贴板')
   }
 
-  const copyUserToken = async (user: SimpleUser) => {
+  const copyUserToken = async (user: any) => {
     if (user.token) {
       await navigator.clipboard.writeText(user.token)
       toast.success(`已复制 ${user.username} 的 Token`)
