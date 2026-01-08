@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import type { FeedbackEntry } from '@/types'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
@@ -9,11 +8,11 @@ import { Modal } from '@/components/ui/Modal'
 import { formatDate, getFeedbackTypeName, getFeedbackStatusName } from '@/lib/utils'
 
 interface FeedbacksTabProps {
-  initialFeedbacks: FeedbackEntry[]
+  initialFeedbacks: any[]
 }
 
 export function FeedbacksTab({ initialFeedbacks }: FeedbacksTabProps) {
-  const [feedbacks, setFeedbacks] = useState<FeedbackEntry[]>(initialFeedbacks)
+  const [feedbacks, setFeedbacks] = useState<any[]>(initialFeedbacks)
   const [filterType, setFilterType] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackEntry | null>(null)
