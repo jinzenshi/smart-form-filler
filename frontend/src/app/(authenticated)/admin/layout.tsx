@@ -12,11 +12,11 @@ export default function AdminLayout({
 
   return (
     <ToastProvider>
-      <div className="min-h-screen bg-gray-50">
+      <div className="admin-layout">
         <AdminHeader username={username || '管理员'} />
-        <main className="max-w-7xl mx-auto px-6">
+        <main className="admin-main">
           <AdminTabs />
-          <div className="mt-6 pb-6">{children}</div>
+          <div className="admin-content">{children}</div>
         </main>
       </div>
     </ToastProvider>
