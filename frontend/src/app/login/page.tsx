@@ -45,215 +45,129 @@ export default function LoginPage() {
   }
 
   return (
-    <>
+    <div className="login-page">
       <style jsx global>{`
-        :root {
-          --color-paper: #faf8f5;
-          --color-ink: #1a1a1a;
-          --color-ink-muted: #8a8a8a;
-          --color-accent: #c9a227;
-          --color-border: #e5ddd0;
-          --color-error: #b91c1c;
-          --color-success: #2d6a4f;
-          --shadow-lg: 0 8px 40px rgba(26, 26, 26, 0.12);
-          --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-          --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        body {
-          margin: 0;
-          background: var(--color-paper);
+        .login-page {
           min-height: 100vh;
-          color: var(--color-ink);
-          line-height: 1.6;
           display: flex;
           align-items: center;
           justify-content: center;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-          background-blend-mode: soft-light;
-          background-repeat: repeat;
-          background-size: 200px 200px;
-          font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+          padding: var(--space-8);
         }
-        .page-decoration {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          pointer-events: none;
-          z-index: 0;
-          overflow: hidden;
-        }
-        .decoration-circle {
-          position: absolute;
-          border-radius: 50%;
-          opacity: 0.03;
-        }
-        .decoration-circle-1 {
-          width: 600px;
-          height: 600px;
-          background: var(--color-ink);
-          top: -200px;
-          right: -100px;
-        }
-        .decoration-circle-2 {
-          width: 400px;
-          height: 400px;
-          background: var(--color-accent);
-          bottom: -100px;
-          left: -100px;
-        }
-        .login-container {
-          position: relative;
-          z-index: 1;
-          width: 100%;
-          max-width: 420px;
-          padding: 40px;
-        }
+
         .login-card {
-          background: white;
-          border-radius: 4px;
-          padding: 50px 45px;
+          background: var(--bg-card);
+          border-radius: var(--radius-lg);
           box-shadow: var(--shadow-lg);
-          border: 1px solid var(--color-border);
+          border: 1px solid var(--border-light);
+          padding: var(--space-10);
+          max-width: 420px;
+          width: 100%;
           position: relative;
         }
-        .login-card::before {
-          content: '';
-          position: absolute;
-          top: 8px;
-          left: 8px;
-          right: 8px;
-          bottom: 8px;
-          border: 1px solid var(--color-border);
-          border-radius: 2px;
-          pointer-events: none;
-        }
-        .page-title {
-          font-family: 'Cormorant Garamond', Georgia, serif;
-          font-size: 32px;
-          font-weight: 600;
-          color: var(--color-ink);
-          margin: 0 0 8px;
+
+        .login-title {
+          font-family: var(--font-display);
+          font-size: var(--text-3xl);
+          font-weight: var(--font-semibold);
+          color: var(--text-primary);
+          margin: 0 0 var(--space-2);
           text-align: center;
         }
-        .page-subtitle {
-          font-family: 'Inter', sans-serif;
-          font-size: 13px;
-          font-weight: 400;
-          color: var(--color-ink-muted);
-          margin: 0 0 40px;
+
+        .login-subtitle {
+          font-size: var(--text-sm);
+          color: var(--text-muted);
           text-align: center;
-          letter-spacing: 2px;
+          margin: 0 0 var(--space-8);
+          letter-spacing: 0.1em;
           text-transform: uppercase;
         }
+
         .form-group {
-          margin-bottom: 25px;
+          margin-bottom: var(--space-6);
         }
+
         .form-label {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          margin: 0 0 12px;
-          color: var(--color-ink);
-          font-family: 'Inter', sans-serif;
-          font-size: 14px;
-          font-weight: 600;
-          letter-spacing: 0.5px;
+          display: block;
+          font-size: var(--text-sm);
+          font-weight: var(--font-semibold);
+          color: var(--text-primary);
+          margin-bottom: var(--space-2);
         }
-        .form-label .icon {
-          color: var(--color-accent);
-        }
+
         .form-input {
           width: 100%;
-          padding: 16px 18px;
-          border: 1px solid var(--color-border);
-          border-radius: 2px;
-          font-size: 15px;
-          color: var(--color-ink);
-          font-family: 'Inter', sans-serif;
+          padding: var(--space-4) var(--space-4);
+          border: 2px solid var(--border-light);
+          border-radius: var(--radius-md);
+          font-size: var(--text-base);
+          font-family: var(--font-body);
+          background: var(--bg-card);
+          color: var(--text-primary);
           transition: all var(--transition-fast);
-          background: linear-gradient(135deg, #faf8f5 0%, #f5f1eb 100%);
           box-sizing: border-box;
         }
+
         .form-input:focus {
           outline: none;
-          border-color: var(--color-accent);
-          background: white;
-          box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.08);
+          border-color: var(--color-amber-600);
+          box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
         }
+
         .form-input::placeholder {
-          color: var(--color-ink-muted);
+          color: var(--text-muted);
           font-style: italic;
         }
+
         .submit-btn {
           width: 100%;
-          padding: 18px 30px;
-          background: var(--color-ink);
+          padding: var(--space-4) var(--space-6);
+          background: linear-gradient(135deg, var(--color-amber-600) 0%, var(--color-amber-700) 100%);
           color: white;
           border: none;
-          border-radius: 2px;
-          font-family: 'Inter', sans-serif;
-          font-size: 13px;
-          font-weight: 600;
-          letter-spacing: 1px;
-          text-transform: uppercase;
+          border-radius: var(--radius-md);
+          font-size: var(--text-sm);
+          font-weight: var(--font-semibold);
           cursor: pointer;
-          transition: all var(--transition-smooth);
-          position: relative;
-          overflow: hidden;
-          margin-top: 15px;
+          transition: all var(--transition-base);
+          margin-top: var(--space-4);
         }
-        .submit-btn::before {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: linear-gradient(135deg, #c9a227 0%, #d4b445 50%, #c9a227 100%);
-          opacity: 0;
-          transition: opacity var(--transition-smooth);
-        }
-        .submit-btn span {
-          position: relative;
-          z-index: 1;
-        }
+
         .submit-btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 30px rgba(26, 26, 26, 0.25);
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
         }
-        .submit-btn:hover::before {
-          opacity: 1;
-        }
+
         .submit-btn:disabled {
           opacity: 0.6;
           cursor: not-allowed;
           transform: none;
         }
-        .message {
-          margin-top: 20px;
-          padding: 14px 18px;
-          border-radius: 2px;
-          text-align: center;
-          font-size: 14px;
-        }
-        .message.error {
-          background: rgba(185, 28, 28, 0.08);
+
+        .error-message {
+          background: var(--color-error-bg);
           color: var(--color-error);
-          border: 1px solid rgba(185, 28, 28, 0.2);
-        }
-        .hint {
-          margin-top: 35px;
-          padding-top: 25px;
-          border-top: 1px solid var(--color-border);
+          padding: var(--space-4);
+          border-radius: var(--radius-md);
+          font-size: var(--text-sm);
+          margin-bottom: var(--space-6);
           text-align: center;
         }
-        .hint-text {
-          font-size: 13px;
-          color: var(--color-ink-muted);
-          line-height: 1.7;
+
+        .hint {
+          margin-top: var(--space-8);
+          padding-top: var(--space-6);
+          border-top: 1px solid var(--border-light);
+          text-align: center;
         }
+
+        .hint-text {
+          font-size: var(--text-sm);
+          color: var(--text-muted);
+          line-height: var(--leading-relaxed);
+        }
+
         .spinner {
           display: inline-block;
           width: 16px;
@@ -262,87 +176,78 @@ export default function LoginPage() {
           border-top-color: white;
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
-          margin-right: 10px;
-          vertical-align: middle;
+          margin-right: var(--space-2);
         }
+
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
+
         @media (max-width: 480px) {
-          .login-container {
-            padding: 20px;
-          }
           .login-card {
-            padding: 35px 25px;
+            padding: var(--space-8);
           }
-          .page-title {
-            font-size: 26px;
+
+          .login-title {
+            font-size: var(--text-2xl);
           }
         }
       `}</style>
 
-      <div className="page-decoration">
-        <div className="decoration-circle decoration-circle-1"></div>
-        <div className="decoration-circle decoration-circle-2"></div>
-      </div>
+      <div className="login-card">
+        <h1 className="login-title">智能填表助手</h1>
+        <p className="login-subtitle">AI 驱动的文档自动化系统</p>
 
-      <div className="login-container">
-        <div className="login-card">
-          <h1 className="page-title">智能填表助手</h1>
-          <p className="page-subtitle">AI 驱动的文档自动化系统</p>
+        {error && <div className="error-message">{error}</div>}
 
-          {error && <div className="message error">{error}</div>}
-
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label">
-                <span className="icon">◆</span>用户名
-              </label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="form-input"
-                placeholder="请输入用户名（≥3字符）"
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                <span className="icon">◆</span>密码
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="form-input"
-                placeholder="请输入密码（≥3字符）"
-                required
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="submit-btn"
-            >
-              {loading ? (
-                <><span className="spinner"></span><span>登录中...</span></>
-              ) : (
-                <span>登录</span>
-              )}
-            </button>
-          </form>
-
-          <div className="hint">
-            <p className="hint-text">
-              请使用管理员提供的账号登录<br />
-              支持临时账号和 Token 登录方式
-            </p>
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label">用户名</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="form-input"
+              placeholder="请输入用户名"
+              required
+            />
           </div>
+
+          <div className="form-group">
+            <label className="form-label">密码</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="form-input"
+              placeholder="请输入密码"
+              required
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="submit-btn"
+          >
+            {loading ? (
+              <>
+                <span className="spinner"></span>
+                <span>登录中...</span>
+              </>
+            ) : (
+              <span>登录</span>
+            )}
+          </button>
+        </form>
+
+        <div className="hint">
+          <p className="hint-text">
+            请使用管理员提供的账号登录<br />
+            支持临时账号和 Token 登录方式
+          </p>
         </div>
       </div>
-    </>
+    </div>
   )
 }
