@@ -17,16 +17,12 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const result = await loginAction(username, password)
-
-      if (result.success) {
-        // Cookies are now set server-side, redirect client-side
-        router.push('/admin')
-        router.refresh()
-      } else {
-        setError(result.error || '登录失败')
-      }
+      await loginAction(username, password)
     } catch (err) {
+      // If it's a redirect error, it's expected - login succeeded
+      if (err && typeof err === 'object' && 'digest' in err && (err as any).digest?.includes('REDIRECT')) {
+        return
+      }
       setError(err instanceof Error ? err.message : '登录失败')
     } finally {
       setLoading(false)
