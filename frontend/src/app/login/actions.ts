@@ -1,7 +1,6 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { redirect } from 'next/navigation'
 
 export async function loginAction(username: string, password: string) {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
@@ -34,8 +33,7 @@ export async function loginAction(username: string, password: string) {
       maxAge: 60 * 60 * 24 * 7
     })
 
-    // Redirect to admin page
-    redirect('/admin')
+    return { success: true }
   }
 
   return { error: data.message || '登录失败，请检查用户名和密码' }
