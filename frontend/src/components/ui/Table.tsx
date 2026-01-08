@@ -15,14 +15,13 @@ interface DataTableProps<T> {
 
 export function DataTable<T extends { id?: number }>({ data, columns, onRowClick }: DataTableProps<T>) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border overflow-hidden">
-      <table className="w-full">
-        <thead className="bg-gray-50">
+    <div className="table-container">
+      <table className="data-table">
+        <thead>
           <tr>
             {columns.map((col) => (
               <th
                 key={col.key}
-                className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 style={{ width: col.width }}
               >
                 {col.label}
@@ -30,18 +29,17 @@ export function DataTable<T extends { id?: number }>({ data, columns, onRowClick
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody>
           {data.map((item, index) => (
             <tr
               key={item.id ?? index}
               onClick={() => onRowClick?.(item)}
               className={cn(
-                'hover:bg-amber-50 transition-colors',
                 onRowClick && 'cursor-pointer'
               )}
             >
               {columns.map((col) => (
-                <td key={col.key} className="px-4 py-3 text-sm">
+                <td key={col.key}>
                   {col.render ? col.render(item) : (item as Record<string, unknown>)[col.key]?.toString() ?? '-'}
                 </td>
               ))}
@@ -49,7 +47,7 @@ export function DataTable<T extends { id?: number }>({ data, columns, onRowClick
           ))}
           {data.length === 0 && (
             <tr>
-              <td colSpan={columns.length} className="px-4 py-8 text-center text-gray-500">
+              <td colSpan={columns.length} className="text-center">
                 暂无数据
               </td>
             </tr>
