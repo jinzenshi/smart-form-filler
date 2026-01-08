@@ -19,13 +19,13 @@ export function LogsTab({ initialLogs }: LogsTabProps) {
   const [selectedLog, setSelectedLog] = useState<any | null>(null)
   const [showModal, setShowModal] = useState(false)
 
-  const filteredLogs = logs.filter((log) => {
+  const filteredLogs = logs.filter((log: any) => {
     if (filterUsername && !log.username.includes(filterUsername)) return false
     if (filterOperation && log.action !== filterOperation) return false
     return true
   })
 
-  const showLogDetails = (log: LogEntry) => {
+  const showLogDetails = (log: any) => {
     setSelectedLog(log)
     setShowModal(true)
   }
