@@ -1,12 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { SimpleUser } from '@/types'
 import { TokensTab } from '@/components/admin/tabs/TokensTab'
 import { getSimpleUsers } from '@/lib/api-client'
 
 export default function TokensPage() {
-  const [users, setUsers] = useState<SimpleUser[]>([])
+  const [users, setUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
