@@ -1,19 +1,19 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import type { SimpleUser, TokenInfo } from '@/types'
+import type { TokenInfo } from '@/types'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { generateTokens } from '@/lib/server-api'
+import { generateTokens } from '@/lib/api-client'
 import { useToast } from '@/components/common/Toast'
 
 interface TokensTabProps {
-  initialUsers: SimpleUser[]
+  initialUsers: any[]
 }
 
 export function TokensTab({ initialUsers }: TokensTabProps) {
-  const [users, setUsers] = useState<SimpleUser[]>(initialUsers)
+  const [users, setUsers] = useState<any[]>(initialUsers)
   const [tokenCount, setTokenCount] = useState(5)
   const [tokenBalance, setTokenBalance] = useState(10)
   const [generatedTokens, setGeneratedTokens] = useState<TokenInfo[]>([])
