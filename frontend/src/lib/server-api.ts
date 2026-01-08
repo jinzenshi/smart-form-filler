@@ -157,7 +157,7 @@ export async function batchDeleteTempAccounts(usernames: string[]): Promise<{ de
 export async function exportTempAccounts(usernames?: string[]): Promise<Blob> {
   const response = await fetch(`${API_BASE}/admin/temp-accounts/export`, {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: await getAuthHeaders(),
     body: usernames ? JSON.stringify(usernames) : '[]'
   })
 
