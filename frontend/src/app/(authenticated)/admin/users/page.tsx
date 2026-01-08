@@ -1,10 +1,32 @@
-import { getUsers } from '@/lib/server-api'
-import { UsersTab } from '@/components/admin/tabs/UsersTab'
-import { requireAdmin } from '@/lib/auth'
+'use client'
 
-export default async function UsersPage() {
-  await requireAdmin()
-  const users = await getUsers()
+import { useEffect, useState } from 'react'
+import type { User } from '@/types'
+import { UsersTab } from '@/components/admin/tabs/UsersTab'
+import { getUsers } from '@/lib/api-client'
+
+export default function UsersPage() {
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    getUsers().then(data => {
+      setUsers(data)
+      setLoading(false)
+    }).catch(() => {
+      setLoading(false)
+    })
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="tab-container">
+        <div className="loading-container" style={{ minHeight: '400px' }}>
+          <div className="loading-spinner"></div>
+        </div>
+      </div>
+    )
+  }
 
   return <UsersTab initialUsers={users} />
 }
