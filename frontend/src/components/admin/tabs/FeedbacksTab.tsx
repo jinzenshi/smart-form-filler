@@ -15,16 +15,16 @@ export function FeedbacksTab({ initialFeedbacks }: FeedbacksTabProps) {
   const [feedbacks, setFeedbacks] = useState<any[]>(initialFeedbacks)
   const [filterType, setFilterType] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
-  const [selectedFeedback, setSelectedFeedback] = useState<FeedbackEntry | null>(null)
+  const [selectedFeedback, setSelectedFeedback] = useState<any | null>(null)
   const [showModal, setShowModal] = useState(false)
 
-  const filteredFeedbacks = feedbacks.filter((fb) => {
+  const filteredFeedbacks = feedbacks.filter((fb: any) => {
     if (filterType && fb.feedback_type !== filterType) return false
     if (filterStatus && fb.status !== filterStatus) return false
     return true
   })
 
-  const showFeedbackDetails = (fb: FeedbackEntry) => {
+  const showFeedbackDetails = (fb: any) => {
     setSelectedFeedback(fb)
     setShowModal(true)
   }
