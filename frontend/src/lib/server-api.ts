@@ -105,7 +105,7 @@ export async function generateTokens(count: number, balance: number = 10): Promi
   const response = await fetch(`${API_BASE}/admin/generate-tokens`, {
     method: 'POST',
     headers: {
-      ...getAuthHeaders(),
+      ...await getAuthHeaders(),
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ count, balance }),
@@ -113,7 +113,7 @@ export async function generateTokens(count: number, balance: number = 10): Promi
   })
 
   if (response.status === 401) {
-    clearAuthCookie()
+    await clearAuthCookie()
     redirect('/login')
   }
 
