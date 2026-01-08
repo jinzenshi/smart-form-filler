@@ -11,8 +11,9 @@ import type {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
-function getAuthHeaders(): HeadersInit {
-  const token = cookies().get('auth_token')?.value
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const cookieStore = await cookies()
+  const token = cookieStore.get('auth_token')?.value
   return {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${token}`
@@ -23,14 +24,14 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   const response = await fetch(`${API_BASE}${endpoint}`, {
     ...options,
     headers: {
-      ...getAuthHeaders(),
+      ...await getAuthHeaders(),
       ...options?.headers
     },
     cache: 'no-store'
   })
 
   if (response.status === 401) {
-    clearAuthCookie()
+    await clearAuthCookie()
     redirect('/login')
   }
 
@@ -42,9 +43,10 @@ async function fetchApi<T>(endpoint: string, options?: RequestInit): Promise<T> 
   return response.json()
 }
 
-function clearAuthCookie() {
-  cookies().delete('auth_token')
-  cookies().delete('username')
+async function clearAuthCookie() {
+  const cookieStore = await cookies()
+  cookieStore.delete('auth_token')
+  cookieStore.delete('username')
 }
 
 // ============================================
