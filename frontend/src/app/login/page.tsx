@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { loginAction } from './actions'
+import { setAuthData } from '@/lib/auth-client'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -17,12 +18,18 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      await loginAction(username, password)
-    } catch (err) {
-      // If it's a redirect error, it's expected - login succeeded
-      if (err && typeof err === 'object' && 'digest' in err && (err as any).digest?.includes('REDIRECT')) {
-        return
+      const result = await loginAction(username, password)
+
+      if (result.success && result.token) {
+        // Store auth data in localStorage (works reliably on Vercel)
+        setAuthData(result.token, result.username || username)
+        // Redirect to admin
+        router.push('/admin')
+        router.refresh()
+      } else {
+        setError(result.error || '登录失败')
       }
+    } catch (err) {
       setError(err instanceof Error ? err.message : '登录失败')
     } finally {
       setLoading(false)
