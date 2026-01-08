@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { setAuthCookieClient } from '@/lib/auth-client'
+import { loginAction } from './actions'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -17,27 +17,15 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-      const formData = new URLSearchParams()
-      formData.append('username', username)
-      formData.append('password', password)
-      const res = await fetch(`${apiUrl}/api/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString()
-      })
-
-      const data = await res.json()
-
-      if (data.success && data.token) {
-        setAuthCookieClient(data.token, data.username || username)
-        router.push('/admin')
-        router.refresh()
-      } else {
-        setError(data.message || '登录失败，请检查用户名和密码')
+      // Use server action to set cookies server-side
+      await loginAction(username, password)
+      // If we get here, login failed (server action throws on success)
+    } catch (err) {
+      // If it's a redirect error, login succeeded
+      if (err && typeof err === 'object' && 'digest' in err && err.digest === 'NEXT_REDIRECT') {
+        return
       }
-    } catch {
-      setError('网络错误，请检查后端服务')
+      setError(err instanceof Error ? err.message : '登录失败')
     } finally {
       setLoading(false)
     }
