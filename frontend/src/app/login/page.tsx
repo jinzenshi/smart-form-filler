@@ -49,206 +49,96 @@ export default function LoginPage() {
 
   return (
     <div className="login-page">
-      <style jsx global>{`
-        .login-page {
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: var(--space-8);
-        }
-
-        .login-card {
-          background: var(--bg-card);
-          border-radius: var(--radius-lg);
-          box-shadow: var(--shadow-lg);
-          border: 1px solid var(--border-light);
-          padding: var(--space-10);
-          max-width: 420px;
-          width: 100%;
-          position: relative;
-        }
-
-        .login-title {
-          font-family: var(--font-display);
-          font-size: var(--text-3xl);
-          font-weight: var(--font-semibold);
-          color: var(--text-primary);
-          margin: 0 0 var(--space-2);
-          text-align: center;
-        }
-
-        .login-subtitle {
-          font-size: var(--text-sm);
-          color: var(--text-muted);
-          text-align: center;
-          margin: 0 0 var(--space-8);
-          letter-spacing: 0.1em;
-          text-transform: uppercase;
-        }
-
-        .form-group {
-          margin-bottom: var(--space-6);
-        }
-
-        .form-label {
-          display: block;
-          font-size: var(--text-sm);
-          font-weight: var(--font-semibold);
-          color: var(--text-primary);
-          margin-bottom: var(--space-2);
-        }
-
-        .form-input {
-          width: 100%;
-          padding: var(--space-4) var(--space-4);
-          border: 2px solid var(--border-light);
-          border-radius: var(--radius-md);
-          font-size: var(--text-base);
-          font-family: var(--font-body);
-          background: var(--bg-card);
-          color: var(--text-primary);
-          transition: all var(--transition-fast);
-          box-sizing: border-box;
-        }
-
-        .form-input:focus {
-          outline: none;
-          border-color: var(--color-amber-600);
-          box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
-        }
-
-        .form-input::placeholder {
-          color: var(--text-muted);
-          font-style: italic;
-        }
-
-        .submit-btn {
-          width: 100%;
-          padding: var(--space-4) var(--space-6);
-          background: linear-gradient(135deg, var(--color-amber-600) 0%, var(--color-amber-700) 100%);
-          color: white;
-          border: none;
-          border-radius: var(--radius-md);
-          font-size: var(--text-sm);
-          font-weight: var(--font-semibold);
-          cursor: pointer;
-          transition: all var(--transition-base);
-          margin-top: var(--space-4);
-        }
-
-        .submit-btn:hover:not(:disabled) {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
-        }
-
-        .submit-btn:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-          transform: none;
-        }
-
-        .error-message {
-          background: var(--color-error-bg);
-          color: var(--color-error);
-          padding: var(--space-4);
-          border-radius: var(--radius-md);
-          font-size: var(--text-sm);
-          margin-bottom: var(--space-6);
-          text-align: center;
-        }
-
-        .hint {
-          margin-top: var(--space-8);
-          padding-top: var(--space-6);
-          border-top: 1px solid var(--border-light);
-          text-align: center;
-        }
-
-        .hint-text {
-          font-size: var(--text-sm);
-          color: var(--text-muted);
-          line-height: var(--leading-relaxed);
-        }
-
-        .spinner {
-          display: inline-block;
-          width: 16px;
-          height: 16px;
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          border-top-color: white;
-          border-radius: 50%;
-          animation: spin 0.8s linear infinite;
-          margin-right: var(--space-2);
-        }
-
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-
-        @media (max-width: 480px) {
-          .login-card {
-            padding: var(--space-8);
-          }
-
-          .login-title {
-            font-size: var(--text-2xl);
-          }
-        }
-      `}</style>
-
-      <div className="login-card">
-        <h1 className="login-title">智能填表助手</h1>
-        <p className="login-subtitle">AI 驱动的文档自动化系统</p>
-
-        {error && <div className="error-message">{error}</div>}
-
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">用户名</label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="form-input"
-              placeholder="请输入用户名"
-              required
-            />
+      <div className="login-container">
+        {/* 左侧品牌区域 */}
+        <div className="brand-section">
+          <div className="brand-logo">
+            <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="6" y="8" width="32" height="36" rx="3" stroke="currentColor" strokeWidth="2.5" fill="none"/>
+              <path d="M14 16h16M14 22h12M14 28h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="36" cy="36" r="8" fill="currentColor"/>
+              <path d="M33 36h6M36 33v6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
           </div>
+          <h1 className="brand-title">文档工坊</h1>
+          <p className="brand-subtitle">智能填表 · 高效文档 · 优雅工作</p>
 
-          <div className="form-group">
-            <label className="form-label">密码</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="form-input"
-              placeholder="请输入密码"
-              required
-            />
+          <ul className="feature-list">
+            <li>
+              <span className="feature-icon">◆</span>
+              DOCX 模板解析，完美还原格式
+            </li>
+            <li>
+              <span className="feature-icon">◆</span>
+              变量智能替换，精准匹配内容
+            </li>
+            <li>
+              <span className="feature-icon">◆</span>
+              一键生成文档，高效完成工作
+            </li>
+          </ul>
+        </div>
+
+        {/* 右侧登录卡片 */}
+        <div className="login-section">
+          <div className="login-card">
+            <h2 className="login-heading">欢迎回来</h2>
+            <p className="login-subheading">请登录以继续</p>
+
+            {error && <div className="error-message">{error}</div>}
+
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label className="form-label">用户名</label>
+                <input
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="form-input"
+                  placeholder="请输入用户名"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">密码</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="form-input"
+                  placeholder="请输入密码"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="login-btn"
+              >
+                {loading ? (
+                  <>
+                    <span className="spinner"></span>
+                    <span>登录中...</span>
+                  </>
+                ) : (
+                  <span>登入</span>
+                )}
+              </button>
+            </form>
+
+            <div className="token-login">
+              <button className="token-btn">
+                <span className="token-icon">◇</span>
+                使用 Token 登录
+              </button>
+            </div>
+
+            <p className="register-link">
+              没有账户？<a href="#">免费注册</a>
+            </p>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="submit-btn"
-          >
-            {loading ? (
-              <>
-                <span className="spinner"></span>
-                <span>登录中...</span>
-              </>
-            ) : (
-              <span>登录</span>
-            )}
-          </button>
-        </form>
-
-        <div className="hint">
-          <p className="hint-text">
-            请使用管理员提供的账号登录<br />
-            支持临时账号和 Token 登录方式
-          </p>
         </div>
       </div>
     </div>
