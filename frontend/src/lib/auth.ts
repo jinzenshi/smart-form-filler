@@ -2,7 +2,8 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 
 export async function requireAuth() {
-  const token = cookies().get('auth_token')?.value
+  const cookieStore = await cookies()
+  const token = cookieStore.get('auth_token')?.value
   if (!token) {
     redirect('/login')
   }
@@ -20,27 +21,30 @@ export async function requireAdmin() {
   })
 
   if (!response.ok) {
-    cookies().delete('auth_token')
-    cookies().delete('username')
+    const cookieStore = await cookies()
+    cookieStore.delete('auth_token')
+    cookieStore.delete('username')
     redirect('/login')
   }
 }
 
-export function getCurrentUser() {
+export async function getCurrentUser() {
+  const cookieStore = await cookies()
   return {
-    token: cookies().get('auth_token')?.value,
-    username: cookies().get('username')?.value
+    token: cookieStore.get('auth_token')?.value,
+    username: cookieStore.get('username')?.value
   }
 }
 
-export function setAuthCookie(token: string, username: string) {
-  cookies().set('auth_token', token, {
+export async function setAuthCookie(token: string, username: string) {
+  const cookieStore = await cookies()
+  cookieStore.set('auth_token', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7 // 7 天
   })
-  cookies().set('username', username, {
+  cookieStore.set('username', username, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -48,7 +52,8 @@ export function setAuthCookie(token: string, username: string) {
   })
 }
 
-export function clearAuthCookie() {
-  cookies().delete('auth_token')
-  cookies().delete('username')
+export async function clearAuthCookie() {
+  const cookieStore = await cookies()
+  cookieStore.delete('auth_token')
+  cookieStore.delete('username')
 }
