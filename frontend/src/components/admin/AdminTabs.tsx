@@ -18,7 +18,7 @@ export function AdminTabs() {
   const currentTab = pathname.split('/').pop() || 'users'
 
   return (
-    <nav className="flex gap-2 p-2 bg-white rounded-lg shadow-sm border mt-6">
+    <nav className="admin-tabs">
       {tabs.map((tab) => {
         const href = `/admin/${tab.key}`
         const isActive = currentTab === tab.key ||
@@ -29,13 +29,11 @@ export function AdminTabs() {
             key={tab.key}
             href={href}
             className={cn(
-              'flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-md font-medium transition-all',
-              isActive
-                ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white'
-                : 'text-gray-600 hover:bg-gray-50'
+              'admin-tab',
+              isActive && 'admin-tab-active'
             )}
           >
-            <span className="text-sm">{tab.icon}</span>
+            <span className="tab-icon">{tab.icon}</span>
             {tab.label}
           </Link>
         )
