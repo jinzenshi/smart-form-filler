@@ -1,12 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { LogEntry } from '@/types'
 import { LogsTab } from '@/components/admin/tabs/LogsTab'
 import { getLogs } from '@/lib/api-client'
 
 export default function LogsPage() {
-  const [logs, setLogs] = useState<LogEntry[]>([])
+  const [logs, setLogs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
