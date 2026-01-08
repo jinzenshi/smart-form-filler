@@ -263,6 +263,213 @@ p, h1, h2, h3, h4, h5, h6 {
   border-left-color: var(--color-error);
 }
 
+/* Admin Layout */
+.admin-layout {
+  min-height: 100vh;
+  background: var(--bg-paper);
+}
+
+.admin-main {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: 0 var(--space-6);
+}
+
+.admin-content {
+  margin-top: var(--space-6);
+  padding-bottom: var(--space-6);
+}
+
+/* Admin Header */
+.admin-header {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-light);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.admin-header-inner {
+  max-width: var(--container-max);
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-header-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.brand-icon {
+  color: var(--color-amber-600);
+  font-size: var(--text-xl);
+}
+
+.brand-title {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.theme-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-lg);
+  border: 1px solid var(--border-light);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.theme-toggle:hover {
+  background: var(--bg-hover);
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.header-user {
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.header-link {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.header-link:hover {
+  color: var(--text-primary);
+}
+
+/* Admin Tabs */
+.admin-tabs {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-light);
+  margin-top: var(--space-6);
+}
+
+.admin-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.admin-tab:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.admin-tab-active {
+  background: linear-gradient(135deg, var(--color-amber-500) 0%, var(--color-amber-600) 100%);
+  color: white;
+}
+
+.tab-icon {
+  font-size: var(--text-sm);
+}
+
+/* Button variants */
+.btn-danger {
+  background: var(--color-error-bg);
+  color: var(--color-error);
+  border: none;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: var(--color-error);
+  color: white;
+}
+
+.btn-md {
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--text-sm);
+}
+
+/* Home Page */
+.home-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-8);
+}
+
+.home-card {
+  text-align: center;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  padding: var(--space-12) var(--space-10);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border-light);
+}
+
+.home-title {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-primary);
+  margin: 0 0 var(--space-4);
+}
+
+.home-subtitle {
+  font-size: var(--text-base);
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-8);
+}
+
+.home-link {
+  display: inline-block;
+  padding: var(--space-4) var(--space-6);
+  background: linear-gradient(135deg, var(--color-amber-600) 0%, var(--color-amber-700) 100%);
+  color: white;
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  text-decoration: none;
+  transition: all var(--transition-base);
+}
+
+.home-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(217, 119, 6, 0.4);
+}
+
 /* Responsive utilities */
 @media (max-width: 768px) {
   .page-container {
