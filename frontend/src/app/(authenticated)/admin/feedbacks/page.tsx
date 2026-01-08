@@ -1,12 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import type { FeedbackEntry } from '@/types'
 import { FeedbacksTab } from '@/components/admin/tabs/FeedbacksTab'
 import { getFeedbacks } from '@/lib/api-client'
 
 export default function FeedbacksPage() {
-  const [feedbacks, setFeedbacks] = useState<FeedbackEntry[]>([])
+  const [feedbacks, setFeedbacks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
