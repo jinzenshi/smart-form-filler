@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import type { LogEntry } from '@/types'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
@@ -10,11 +9,11 @@ import { Modal } from '@/components/ui/Modal'
 import { formatDate } from '@/lib/utils'
 
 interface LogsTabProps {
-  initialLogs: LogEntry[]
+  initialLogs: any[]
 }
 
 export function LogsTab({ initialLogs }: LogsTabProps) {
-  const [logs, setLogs] = useState<LogEntry[]>(initialLogs)
+  const [logs, setLogs] = useState<any[]>(initialLogs)
   const [filterUsername, setFilterUsername] = useState('')
   const [filterOperation, setFilterOperation] = useState('')
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null)
