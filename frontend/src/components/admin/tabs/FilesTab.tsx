@@ -1,21 +1,20 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import type { FileRecord } from '@/types'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Select } from '@/components/ui/Select'
 import { Input } from '@/components/ui/Input'
 import { formatDate, formatFileSize, getFileTypeName, getFileTypeBadge } from '@/lib/utils'
-import { deleteFile } from '@/lib/server-api'
+import { deleteFile } from '@/lib/api-client'
 import { useToast } from '@/components/common/Toast'
 
 interface FilesTabProps {
-  initialFiles: FileRecord[]
+  initialFiles: any[]
 }
 
 export function FilesTab({ initialFiles }: FilesTabProps) {
-  const [files, setFiles] = useState<FileRecord[]>(initialFiles)
+  const [files, setFiles] = useState<any[]>(initialFiles)
   const [filterType, setFilterType] = useState('')
   const [filterUsername, setFilterUsername] = useState('')
   const [isPending, startTransition] = useTransition()
