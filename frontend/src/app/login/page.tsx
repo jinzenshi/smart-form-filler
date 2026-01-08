@@ -46,26 +46,19 @@ export default function LoginPage() {
 
   return (
     <>
-      {/* 页面装饰 */}
       <style jsx global>{`
         :root {
           --color-paper: #faf8f5;
-          --color-paper-dark: #f5f1eb;
           --color-ink: #1a1a1a;
-          --color-ink-light: #4a4a4a;
           --color-ink-muted: #8a8a8a;
           --color-accent: #c9a227;
-          --color-accent-light: #d4b445;
-          --color-accent-dark: #b08d1e;
           --color-border: #e5ddd0;
-          --color-border-dark: #d4c9b8;
-          --color-success: #2d6a4f;
           --color-error: #b91c1c;
+          --color-success: #2d6a4f;
           --shadow-lg: 0 8px 40px rgba(26, 26, 26, 0.12);
           --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           --transition-smooth: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-
         body {
           margin: 0;
           background: var(--color-paper);
@@ -81,7 +74,6 @@ export default function LoginPage() {
           background-size: 200px 200px;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
         }
-
         .page-decoration {
           position: fixed;
           top: 0;
@@ -92,13 +84,11 @@ export default function LoginPage() {
           z-index: 0;
           overflow: hidden;
         }
-
         .decoration-circle {
           position: absolute;
           border-radius: 50%;
           opacity: 0.03;
         }
-
         .decoration-circle-1 {
           width: 600px;
           height: 600px;
@@ -106,7 +96,6 @@ export default function LoginPage() {
           top: -200px;
           right: -100px;
         }
-
         .decoration-circle-2 {
           width: 400px;
           height: 400px;
@@ -114,7 +103,6 @@ export default function LoginPage() {
           bottom: -100px;
           left: -100px;
         }
-
         .login-container {
           position: relative;
           z-index: 1;
@@ -122,7 +110,6 @@ export default function LoginPage() {
           max-width: 420px;
           padding: 40px;
         }
-
         .login-card {
           background: white;
           border-radius: 4px;
@@ -131,7 +118,6 @@ export default function LoginPage() {
           border: 1px solid var(--color-border);
           position: relative;
         }
-
         .login-card::before {
           content: '';
           position: absolute;
@@ -143,7 +129,6 @@ export default function LoginPage() {
           border-radius: 2px;
           pointer-events: none;
         }
-
         .page-title {
           font-family: 'Cormorant Garamond', Georgia, serif;
           font-size: 32px;
@@ -152,7 +137,6 @@ export default function LoginPage() {
           margin: 0 0 8px;
           text-align: center;
         }
-
         .page-subtitle {
           font-family: 'Inter', sans-serif;
           font-size: 13px;
@@ -163,11 +147,9 @@ export default function LoginPage() {
           letter-spacing: 2px;
           text-transform: uppercase;
         }
-
         .form-group {
           margin-bottom: 25px;
         }
-
         .form-label {
           display: flex;
           align-items: center;
@@ -179,11 +161,9 @@ export default function LoginPage() {
           font-weight: 600;
           letter-spacing: 0.5px;
         }
-
         .form-label .icon {
           color: var(--color-accent);
         }
-
         .form-input {
           width: 100%;
           padding: 16px 18px;
@@ -196,19 +176,16 @@ export default function LoginPage() {
           background: linear-gradient(135deg, #faf8f5 0%, #f5f1eb 100%);
           box-sizing: border-box;
         }
-
         .form-input:focus {
           outline: none;
           border-color: var(--color-accent);
           background: white;
           box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.08);
         }
-
         .form-input::placeholder {
           color: var(--color-ink-muted);
           font-style: italic;
         }
-
         .submit-btn {
           width: 100%;
           padding: 18px 30px;
@@ -227,7 +204,6 @@ export default function LoginPage() {
           overflow: hidden;
           margin-top: 15px;
         }
-
         .submit-btn::before {
           content: '';
           position: absolute;
@@ -239,63 +215,45 @@ export default function LoginPage() {
           opacity: 0;
           transition: opacity var(--transition-smooth);
         }
-
         .submit-btn span {
           position: relative;
           z-index: 1;
         }
-
         .submit-btn:hover:not(:disabled) {
           transform: translateY(-2px);
           box-shadow: 0 8px 30px rgba(26, 26, 26, 0.25);
         }
-
         .submit-btn:hover::before {
           opacity: 1;
         }
-
         .submit-btn:disabled {
           opacity: 0.6;
           cursor: not-allowed;
           transform: none;
         }
-
         .message {
           margin-top: 20px;
           padding: 14px 18px;
           border-radius: 2px;
           text-align: center;
           font-size: 14px;
-          display: none;
         }
-
         .message.error {
           background: rgba(185, 28, 28, 0.08);
           color: var(--color-error);
           border: 1px solid rgba(185, 28, 28, 0.2);
-          display: block;
         }
-
-        .message.success {
-          background: rgba(45, 106, 79, 0.08);
-          color: var(--color-success);
-          border: 1px solid rgba(45, 106, 79, 0.2);
-          display: block;
-        }
-
         .hint {
           margin-top: 35px;
           padding-top: 25px;
           border-top: 1px solid var(--color-border);
           text-align: center;
         }
-
         .hint-text {
           font-size: 13px;
           color: var(--color-ink-muted);
           line-height: 1.7;
         }
-
         .spinner {
           display: inline-block;
           width: 16px;
@@ -307,27 +265,22 @@ export default function LoginPage() {
           margin-right: 10px;
           vertical-align: middle;
         }
-
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
-
         @media (max-width: 480px) {
           .login-container {
             padding: 20px;
           }
-
           .login-card {
             padding: 35px 25px;
           }
-
           .page-title {
             font-size: 26px;
           }
         }
       `}</style>
 
-      {/* 页面装饰 */}
       <div className="page-decoration">
         <div className="decoration-circle decoration-circle-1"></div>
         <div className="decoration-circle decoration-circle-2"></div>
