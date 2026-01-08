@@ -49,13 +49,13 @@ export function UsersTab({ initialUsers }: UsersTabProps) {
   ]
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">用户管理</h2>
+    <div className="tab-container">
+      <div className="tab-header">
+        <h2 className="tab-title">用户管理</h2>
         <button
           onClick={refresh}
           disabled={loading}
-          className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 disabled:opacity-50"
+          className="btn btn-secondary"
         >
           {loading ? '刷新中...' : '刷新'}
         </button>
