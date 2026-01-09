@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 
 interface DocxPreviewProps {
   blob: Blob | null
@@ -13,9 +13,11 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   const [error, setError] = useState<string>()
   const [loading, setLoading] = useState(false)
   const [rendered, setRendered] = useState(false)
+  const [showContent, setShowContent] = useState(false)
   const docxLibraryRef = useRef<any>(null)
   const retryCountRef = useRef(0)
   const maxRetries = 3
+  const renderTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // 加载 docx-preview 库
   async function loadDocxLibrary(): Promise<void> {
@@ -30,10 +32,19 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     }
   }
 
-  // 渲染预览
-  async function renderPreview() {
+  // 清理函数
+  function cleanup() {
+    if (renderTimeoutRef.current) {
+      clearTimeout(renderTimeoutRef.current)
+      renderTimeoutRef.current = null
+    }
+  }
+
+  // 渲染预览 - 使用稳定引用
+  const renderPreview = useCallback(async () => {
     if (!blob || !containerRef.current) return
 
+    cleanup()
     setError(undefined)
     setLoading(true)
     retryCountRef.current++
@@ -44,14 +55,14 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       // 清空容器
       containerRef.current.innerHTML = ''
 
-      // 使用 renderDocx 替代 renderAsync，减少外部请求
+      // 获取渲染函数
       const renderFn = docxLibraryRef.current.renderDocx || docxLibraryRef.current.renderAsync
 
       if (typeof renderFn !== 'function') {
         throw new Error('docx-preview 渲染函数不可用')
       }
 
-      // 渲染选项 - 禁用外部资源加载
+      // 渲染选项
       const renderOptions = {
         className: 'docx-wrapper',
         inWrapper: true,
@@ -59,42 +70,57 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         breakPages: true,
         useBase64URL: true,
         enableMultiWorker: false,
-        // 添加自定义解析器来处理字体加载
-        experimental: true,
       }
 
-      await renderFn(blob, containerRef.current, renderOptions)
+      // 创建超时保护
+      const renderPromise = renderFn(blob, containerRef.current, renderOptions)
 
+      renderTimeoutRef.current = setTimeout(() => {
+        // 如果渲染超时，强制显示已渲染的内容
+        if (!showContent) {
+          console.warn('DocxPreview render timeout, showing partial content')
+          setRendered(true)
+          setShowContent(true)
+          onRendered?.()
+        }
+      }, 8000) // 8秒超时
+
+      await renderPromise
+
+      // 渲染成功
+      cleanup()
       setRendered(true)
+      setShowContent(true)
       onRendered?.()
+
     } catch (err: any) {
+      cleanup()
       console.error('DocxPreview render error:', err)
 
       // 如果还有重试次数，延迟重试
       if (retryCountRef.current < maxRetries) {
         setLoading(true)
-        setTimeout(() => {
+        renderTimeoutRef.current = setTimeout(() => {
           renderPreview()
-        }, 1000)
+        }, 1500)
         return
       }
 
       const errorMsg = err.message || '文档加载失败，请重试'
       setError(errorMsg)
       onError?.(errorMsg)
-    } finally {
-      if (retryCountRef.current >= maxRetries) {
-        setLoading(false)
-      }
+      setLoading(false)
     }
-  }
+  }, [blob, showContent, onRendered, onError])
 
+  // blob 变化时触发渲染
   useEffect(() => {
-    if (blob && !rendered) {
+    if (blob && !showContent) {
       retryCountRef.current = 0
       renderPreview()
     }
-  }, [blob])
+    return cleanup
+  }, [blob, showContent, renderPreview])
 
   // 重试处理
   function handleRetry(e: React.MouseEvent) {
@@ -103,11 +129,12 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     retryCountRef.current = 0
     setError(undefined)
     setRendered(false)
+    setShowContent(false)
     renderPreview()
   }
 
   // 如果已经渲染成功，显示内容
-  if (rendered) {
+  if (showContent) {
     return (
       <div className="docx-preview">
         <div ref={containerRef} className="docx-preview-content"></div>
