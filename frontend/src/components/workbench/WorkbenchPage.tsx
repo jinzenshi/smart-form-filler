@@ -291,9 +291,13 @@ export function WorkbenchPage() {
 
           <div className="header-right">
             <div className="user-info">
-              <span className="user-avatar">{username?.charAt(0).toUpperCase()}</span>
-              <span className="user-name">{username}</span>
-              {tokenBalance !== null && (
+              {mounted && username && (
+                <>
+                  <span className="user-avatar">{username.charAt(0).toUpperCase()}</span>
+                  <span className="user-name">{username}</span>
+                </>
+              )}
+              {mounted && tokenBalance !== null && (
                 <span className="balance-badge">
                   {tokenBalance} Token
                 </span>
