@@ -56,6 +56,8 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         inWrapper: true,
         ignoreWidth: false,
         breakPages: true,
+        useBase64URL: true,
+        enableMultiWorker: false,
       })
 
       onRendered?.()
