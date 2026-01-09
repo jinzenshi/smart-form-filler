@@ -1,0 +1,1040 @@
+'use client'
+
+import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { getAuthData } from '@/lib/auth-client'
+import { processDocx, getTokenBalance, base64ToBlob } from '@/lib/docx'
+import { DocxPreview } from '@/components/docx/DocxPreview'
+import { Button } from '@/components/ui/Button'
+import { Input } from '@/components/ui/Input'
+import { Modal } from '@/components/ui/Modal'
+import { useToast } from '@/components/common/Toast'
+
+// 默认模板 URL
+const DEFAULT_TEMPLATE_URL = 'https://uwajqrjmamoaccslzrzo.supabase.co/storage/v1/object/public/docx-files/templates/template_20260107_091842_a18da2cb.docx'
+
+// 默认用户信息
+const DEFAULT_USER_INFO = `# 报名登记表（虚拟信息）
+
+## 基本信息
+姓名：陈宇
+性别：男
+民族：汉族
+籍贯：广东梅州
+出生日期：1992年3月20日
+参加工作时间：2015年9月
+政治面貌：中共党员
+婚姻状况：已婚
+身份证号：441421199203204817
+学历：本科
+毕业院校：广东工业大学
+专业：公共事业管理
+特长：公文写作、数据分析、组织协调
+计算机能力：会使用办公软件
+联系电话：13500135982
+户口地址：广州市越秀区登峰街童心路65号2栋301房
+常住地址：广州市越秀区登峰街童心路65号2栋301房
+
+## 个人简历
+1. 起止时间：2009.09-2012.06；所在单位：梅州市梅江区高级中学；任何职：学生
+2. 起止时间：2012.09-2016.06；所在单位：广东工业大学；任何职：学生
+3. 起止时间：2016.07-2020.11；所在单位：广州市天河区政务服务中心；任何职：综合窗口专员
+
+## 家庭主要成员
+1. 姓名：陈卫国；关系：父亲；工作单位：梅州市某民营企业 技术主管
+2. 姓名：林秀兰；关系：母亲；工作单位：梅州市某社区 网格员`
+
+export function WorkbenchPage() {
+  const router = useRouter()
+  const toast = useToast()
+  const { username, token } = getAuthData()
+
+  // 文件上传状态
+  const docxInputRef = useRef<HTMLInputElement>(null)
+  const infoInputRef = useRef<HTMLInputElement>(null)
+  const [docxFile, setDocxFile] = useState<File | null>(null)
+  const [docxFileName, setDocxFileName] = useState('')
+  const [infoFile, setInfoFile] = useState<File | null>(null)
+  const [infoFileName, setInfoFileName] = useState('')
+
+  // 信息填写方式
+  const [infoTab, setInfoTab] = useState<'manual' | 'upload'>('manual')
+  const [userInfo, setUserInfo] = useState(DEFAULT_USER_INFO)
+
+  // 预览状态
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [progressStep, setProgressStep] = useState(-1)
+  const [missingFields, setMissingFields] = useState<string[]>([])
+
+  // Token 余额
+  const [tokenBalance, setTokenBalance] = useState<number | null>(null)
+
+  // 下载确认弹窗
+  const [showDownloadConfirm, setShowDownloadConfirm] = useState(false)
+  const [downloadBlob, setDownloadBlob] = useState<Blob | null>(null)
+
+  // 默认模板
+  const [defaultTemplateBlob, setDefaultTemplateBlob] = useState<Blob | null>(null)
+
+  // 是否可以预览
+  const canPreview = (docxFile || defaultTemplateBlob) && (userInfo.trim() || infoFile)
+
+  // 初始化
+  useEffect(() => {
+    // 检查登录状态
+    if (!token) {
+      router.push('/login')
+      return
+    }
+
+    // 加载默认模板
+    loadDefaultTemplate()
+
+    // 加载 Token 余额
+    loadTokenBalance()
+
+    // 加载本地保存的用户信息
+    loadUserInfo()
+  }, [router, token])
+
+  // 加载默认模板
+  async function loadDefaultTemplate() {
+    try {
+      const response = await fetch(DEFAULT_TEMPLATE_URL)
+      if (response.ok) {
+        const blob = await response.blob()
+        setDefaultTemplateBlob(blob)
+      }
+    } catch (e) {
+      console.log('未找到内置模板文件')
+    }
+  }
+
+  // 加载 Token 余额
+  async function loadTokenBalance() {
+    try {
+      const data = await getTokenBalance()
+      setTokenBalance(data.balance)
+    } catch (e) {
+      console.error('获取余额失败')
+    }
+  }
+
+  // 加载本地保存的用户信息
+  function loadUserInfo() {
+    const saved = localStorage.getItem('user_info_text')
+    if (saved) {
+      setUserInfo(saved)
+    }
+  }
+
+  // 保存用户信息到本地
+  function saveUserInfo() {
+    localStorage.setItem('user_info_text', userInfo)
+  }
+
+  // 文件选择处理
+  function handleDocxSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file && file.name.endsWith('.docx')) {
+      setDocxFile(file)
+      setDocxFileName(file.name)
+    }
+  }
+
+  function handleInfoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (file) {
+      setInfoFile(file)
+      setInfoFileName(file.name)
+      // 读取文件内容
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        setUserInfo(ev.target?.result as string)
+      }
+      reader.readAsText(file)
+    }
+  }
+
+  // 下载默认模板
+  async function downloadTemplate() {
+    if (defaultTemplateBlob) {
+      const url = URL.createObjectURL(defaultTemplateBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = '报名表模板.docx'
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  // 开始处理
+  async function handlePreview() {
+    if (!canPreview) return
+
+    setLoading(true)
+    setMissingFields([])
+    setProgressStep(0)
+
+    try {
+      // 模拟进度步骤
+      await new Promise(resolve => setTimeout(resolve, 500))
+      setProgressStep(1)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      setProgressStep(2)
+
+      const templateFile = docxFile || new File([defaultTemplateBlob!], '模板.docx', {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      })
+
+      const response = await processDocx(templateFile, userInfo, true)
+
+      if (response.success) {
+        setProgressStep(3)
+        await new Promise(resolve => setTimeout(resolve, 300))
+
+        if (response.data) {
+          setPreviewBlob(base64ToBlob(response.data))
+        }
+
+        if (response.missing_fields && response.missing_fields.length > 0) {
+          setMissingFields(response.missing_fields)
+        }
+      } else {
+        toast.error(response.message || '处理失败')
+      }
+    } catch (e: any) {
+      toast.error(e.message || '网络错误，请重试')
+    } finally {
+      setLoading(false)
+      setProgressStep(-1)
+    }
+  }
+
+  // 下载文档
+  async function handleDownload() {
+    if (previewBlob) {
+      // 直接使用预览的 blob 下载
+      setDownloadBlob(previewBlob)
+      setShowDownloadConfirm(true)
+      return
+    }
+
+    setLoading(true)
+    try {
+      const templateFile = docxFile || new File([defaultTemplateBlob!], '模板.docx', {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      })
+
+      const response = await processDocx(templateFile, userInfo, false)
+
+      if (response.blob) {
+        setDownloadBlob(response.blob)
+        setShowDownloadConfirm(true)
+        // 更新余额
+        if (response.balance !== undefined) {
+          setTokenBalance(response.balance)
+        }
+      } else if (response.success === false) {
+        toast.error(response.message || '下载失败')
+      }
+    } catch (e: any) {
+      toast.error(e.message || '网络错误，请重试')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 确认下载
+  function confirmDownload() {
+    if (downloadBlob) {
+      const url = URL.createObjectURL(downloadBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = '报名表_已填写.docx'
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      setShowDownloadConfirm(false)
+    }
+  }
+
+  // 退出登录
+  function handleLogout() {
+    localStorage.removeItem('auth_token')
+    localStorage.removeItem('username')
+    router.push('/login')
+  }
+
+  return (
+    <div className="workbench-page">
+      {/* Header */}
+      <header className="main-header">
+        <div className="header-content">
+          <div className="header-left">
+            <h1 className="logo">
+              <span className="logo-icon">◇</span>
+              文档工坊
+            </h1>
+          </div>
+
+          <div className="header-right">
+            <div className="user-info">
+              <span className="user-avatar">{username?.charAt(0).toUpperCase()}</span>
+              <span className="user-name">{username}</span>
+              {tokenBalance !== null && (
+                <span className="balance-badge">
+                  {tokenBalance} Token
+                </span>
+              )}
+            </div>
+
+            <div className="user-actions">
+              <a href="/admin" className="action-link">管理</a>
+              <button className="logout-btn" onClick={handleLogout}>退出</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="main-content">
+        <div className="content-grid">
+          {/* Left Panel - Editor */}
+          <section className="panel editor-panel">
+            <div className="panel-header">
+              <h2>
+                <span className="panel-icon">✎</span>
+                文档编辑
+              </h2>
+            </div>
+
+            <div className="panel-body">
+              {/* Step 1: Upload Template */}
+              <div className="step-section">
+                <div className="step-header">
+                  <span className="step-number">1</span>
+                  <h3>上传 DOCX 模板</h3>
+                  <Button variant="ghost" size="sm" onClick={downloadTemplate}>
+                    下载示例模板
+                  </Button>
+                </div>
+                <div
+                  className="file-upload-area"
+                  onClick={() => docxInputRef.current?.click()}
+                >
+                  <input
+                    ref={docxInputRef}
+                    type="file"
+                    accept=".docx"
+                    onChange={handleDocxSelect}
+                  />
+                  <div className="upload-content">
+                    <span className="upload-icon">📄</span>
+                    <span className="upload-text">{docxFileName || '点击或拖拽上传模板'}</span>
+                    <span className="upload-hint">支持 .docx 格式，最大 10MB</span>
+                  </div>
+                </div>
+                {docxFileName && <p className="file-note">✓ {docxFileName}</p>}
+              </div>
+
+              {/* Step 2: Fill Info */}
+              <div className="step-section">
+                <div className="step-header">
+                  <span className="step-number">2</span>
+                  <h3>填写个人信息</h3>
+                </div>
+
+                {/* Tabs */}
+                <div className="info-tabs">
+                  <button
+                    className={`tab-btn ${infoTab === 'manual' ? 'active' : ''}`}
+                    onClick={() => setInfoTab('manual')}
+                  >
+                    手动填写
+                  </button>
+                  <button
+                    className={`tab-btn ${infoTab === 'upload' ? 'active' : ''}`}
+                    onClick={() => setInfoTab('upload')}
+                  >
+                    上传文件
+                  </button>
+                </div>
+
+                {/* Manual Input */}
+                {infoTab === 'manual' && (
+                  <div className="tab-content">
+                    <textarea
+                      value={userInfo}
+                      onChange={(e) => {
+                        setUserInfo(e.target.value)
+                        saveUserInfo()
+                      }}
+                      className="input textarea code-editor"
+                      placeholder="# 请填写要替换的变量信息..."
+                      spellCheck={false}
+                    />
+                    <p className="local-save-hint">💡 个人信息会自动保存在本地</p>
+                  </div>
+                )}
+
+                {/* Upload File */}
+                {infoTab === 'upload' && (
+                  <div className="tab-content">
+                    <div
+                      className="file-upload-area small"
+                      onClick={() => infoInputRef.current?.click()}
+                    >
+                      <input
+                        ref={infoInputRef}
+                        type="file"
+                        accept=".txt,.md,.markdown"
+                        onChange={handleInfoSelect}
+                      />
+                      <div className="upload-content">
+                        <span className="upload-icon">📋</span>
+                        <span className="upload-text">{infoFileName || '点击上传个人信息文件'}</span>
+                        <span className="upload-hint">支持 .txt .md 格式</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="action-section">
+                <Button
+                  className="action-btn"
+                  disabled={!canPreview || loading}
+                  onClick={handlePreview}
+                >
+                  <span className="btn-icon">◉</span>
+                  {loading ? '处理中...' : '开始填充'}
+                </Button>
+              </div>
+
+              {/* Missing Fields Warning */}
+              {missingFields.length > 0 && (
+                <div className="missing-fields-inline">
+                  <div className="warning-header">
+                    <span className="warning-icon">⚠️</span>
+                    <span className="warning-title">以下字段可能需要补充</span>
+                  </div>
+                  <ul className="missing-fields-list">
+                    {missingFields.map((field) => (
+                      <li key={field} className="missing-field-item">
+                        {field}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Right Panel - Preview */}
+          <section className="panel preview-panel">
+            <div className="panel-header">
+              <h2>
+                <span className="panel-icon">◫</span>
+                预览结果
+              </h2>
+              {previewBlob && (
+                <Button variant="primary" size="sm" onClick={handleDownload} disabled={loading}>
+                  下载文档
+                </Button>
+              )}
+            </div>
+
+            <div className="panel-body">
+              {/* Progress Steps */}
+              {loading && (
+                <div className="progress-steps">
+                  <div className={`progress-step ${progressStep === 0 ? 'active' : ''} ${progressStep > 0 ? 'completed' : ''}`}>
+                    <div className="progress-step-icon">{progressStep > 0 ? '✓' : '①'}</div>
+                    <div className="progress-step-text">解析模板...</div>
+                  </div>
+                  <div className={`progress-step ${progressStep === 1 ? 'active' : ''} ${progressStep > 1 ? 'completed' : ''}`}>
+                    <div className="progress-step-icon">{progressStep > 1 ? '✓' : '②'}</div>
+                    <div className="progress-step-text">智能填写...</div>
+                  </div>
+                  <div className={`progress-step ${progressStep === 2 ? 'active' : ''} ${progressStep > 2 ? 'completed' : ''}`}>
+                    <div className="progress-step-icon">{progressStep > 2 ? '✓' : '③'}</div>
+                    <div className="progress-step-text">渲染预览...</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Preview */}
+              {previewBlob ? (
+                <DocxPreview
+                  blob={previewBlob}
+                  onRendered={() => {}}
+                  onError={(msg) => toast.error(msg)}
+                />
+              ) : (
+                <div className="preview-placeholder">
+                  <div className="placeholder-content">
+                    <span className="fun-icon">📝</span>
+                    <p className="placeholder-text">上传模板并填写信息后</p>
+                    <p className="placeholder-subtext">即可预览生成效果</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      </main>
+
+      {/* Download Confirmation Modal */}
+      <Modal
+        isOpen={showDownloadConfirm}
+        onClose={() => setShowDownloadConfirm(false)}
+        title="确认下载"
+      >
+        <div className="confirm-content">
+          <p>确定要下载处理后的文档吗？</p>
+        </div>
+        <div className="modal-actions">
+          <Button variant="secondary" onClick={() => setShowDownloadConfirm(false)}>
+            取消
+          </Button>
+          <Button variant="primary" onClick={confirmDownload}>
+            确认下载
+          </Button>
+        </div>
+      </Modal>
+
+      <style jsx>{`
+        .workbench-page {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          background: var(--background, #faf9f7);
+        }
+
+        .main-header {
+          background: var(--bg-card, white);
+          border-bottom: 1px solid var(--border-light, #e5e5e5);
+          position: sticky;
+          top: 0;
+          z-index: 100;
+        }
+
+        .header-content {
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 16px 24px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+
+        .logo {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #1a1a1a;
+          margin: 0;
+        }
+
+        .logo-icon {
+          color: #d97706;
+        }
+
+        .header-right {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+
+        .user-info {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .user-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #f59e0b, #92400e);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 600;
+          font-size: 14px;
+        }
+
+        .user-name {
+          font-weight: 500;
+          color: #1a1a1a;
+        }
+
+        .balance-badge {
+          padding: 4px 12px;
+          background: #fef3c7;
+          color: #92400e;
+          border-radius: 9999px;
+          font-size: 12px;
+          font-weight: 600;
+        }
+
+        .user-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .action-link {
+          padding: 8px 12px;
+          color: #6b6b6b;
+          border-radius: 6px;
+          font-size: 14px;
+          text-decoration: none;
+        }
+
+        .action-link:hover {
+          background: #f5f5f5;
+        }
+
+        .logout-btn {
+          padding: 8px 16px;
+          background: #fee2e2;
+          color: #dc2626;
+          border-radius: 6px;
+          font-size: 14px;
+          font-weight: 500;
+          border: none;
+          cursor: pointer;
+        }
+
+        .logout-btn:hover {
+          background: #dc2626;
+          color: white;
+        }
+
+        .main-content {
+          flex: 1;
+          max-width: 1400px;
+          margin: 0 auto;
+          padding: 24px;
+          width: 100%;
+        }
+
+        .content-grid {
+          display: grid;
+          grid-template-columns: 420px 1fr;
+          gap: 24px;
+          align-items: start;
+        }
+
+        .panel {
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          border: 1px solid #e5e5e5;
+          overflow: hidden;
+        }
+
+        .panel-header {
+          padding: 20px 24px;
+          border-bottom: 1px solid #e5e5e5;
+          background: #fafafa;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .panel-header h2 {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 18px;
+          font-weight: 600;
+          margin: 0;
+        }
+
+        .panel-icon {
+          color: #d97706;
+        }
+
+        .panel-body {
+          padding: 24px;
+        }
+
+        .step-section {
+          margin-bottom: 24px;
+        }
+
+        .step-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+
+        .step-number {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+          color: white;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          font-weight: 600;
+        }
+
+        .step-header h3 {
+          font-size: 22px;
+          font-weight: 600;
+          margin: 0;
+        }
+
+        .step-header :global(.btn) {
+          margin-left: auto;
+          font-size: 13px;
+          padding: 8px 12px;
+        }
+
+        .file-upload-area {
+          border: 2px dashed #fbbf24;
+          border-radius: 8px;
+          padding: 20px;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.2s;
+          background: #fafafa;
+        }
+
+        .file-upload-area:hover {
+          border-color: #f59e0b;
+          background: #fef3c7;
+        }
+
+        .file-upload-area input {
+          display: none;
+        }
+
+        .file-upload-area.small {
+          padding: 16px;
+        }
+
+        .upload-content {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .upload-icon {
+          font-size: 32px;
+        }
+
+        .upload-text {
+          font-size: 15px;
+          font-weight: 500;
+          color: #1a1a1a;
+        }
+
+        .upload-hint {
+          font-size: 13px;
+          color: #9ca3af;
+        }
+
+        .file-note {
+          margin-top: 8px;
+          font-size: 13px;
+          color: #d97706;
+        }
+
+        .info-tabs {
+          display: flex;
+          gap: 0;
+          margin-bottom: 16px;
+          border-bottom: 1px solid #e5e5e5;
+        }
+
+        .tab-btn {
+          padding: 12px 20px;
+          background: transparent;
+          border: none;
+          font-size: 14px;
+          font-weight: 500;
+          color: #9ca3af;
+          cursor: pointer;
+          position: relative;
+        }
+
+        .tab-btn.active {
+          color: #d97706;
+        }
+
+        .tab-btn.active::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          left: 0;
+          right: 0;
+          height: 2px;
+          background: #f59e0b;
+        }
+
+        .tab-content {
+          animation: fadeSlideIn 0.2s ease;
+        }
+
+        @keyframes fadeSlideIn {
+          from {
+            opacity: 0;
+            transform: translateY(5px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        .code-editor {
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 15px;
+          line-height: 1.7;
+          min-height: 200px;
+          letter-spacing: 0.02em;
+        }
+
+        .local-save-hint {
+          margin-top: 8px;
+          font-size: 12px;
+          color: #9ca3af;
+        }
+
+        .action-section {
+          display: flex;
+          gap: 16px;
+          padding-top: 16px;
+          border-top: 1px solid #e5e5e5;
+        }
+
+        .action-btn {
+          flex: 1;
+        }
+
+        .btn-icon {
+          font-size: 14px;
+        }
+
+        .missing-fields-inline {
+          margin-top: 12px;
+          padding: 16px;
+          background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
+          border: 1px solid #fbbf24;
+          border-radius: 8px;
+        }
+
+        .warning-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+
+        .warning-title {
+          font-weight: 600;
+          color: #92400e;
+          font-size: 15px;
+        }
+
+        .missing-fields-list {
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .missing-field-item {
+          position: relative;
+          padding-left: 20px;
+          padding-bottom: 4px;
+          color: #d97706;
+          font-size: 14px;
+        }
+
+        .missing-field-item::before {
+          content: '•';
+          position: absolute;
+          left: 8px;
+          color: #f59e0b;
+        }
+
+        .preview-panel .panel-body {
+          min-height: 500px;
+          background: #f5f5f5;
+          padding: 0;
+        }
+
+        .preview-placeholder {
+          height: 100%;
+          min-height: 400px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .placeholder-content {
+          text-align: center;
+          color: #9ca3af;
+        }
+
+        .fun-icon {
+          font-size: 56px;
+          animation: bounce 2s ease-in-out infinite;
+          display: block;
+        }
+
+        @keyframes bounce {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-10px); }
+        }
+
+        .placeholder-text {
+          font-size: 18px;
+          margin-bottom: 4px;
+          color: #6b6b6b;
+          font-weight: 500;
+        }
+
+        .placeholder-subtext {
+          font-size: 15px;
+          color: #9ca3af;
+        }
+
+        .progress-steps {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          padding: 16px;
+          background: white;
+          border-radius: 8px;
+          margin-bottom: 16px;
+        }
+
+        .progress-step {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          opacity: 0.4;
+          transition: all 0.3s ease;
+        }
+
+        .progress-step.active {
+          opacity: 1;
+        }
+
+        .progress-step.completed {
+          opacity: 0.7;
+        }
+
+        .progress-step-icon {
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          font-weight: 600;
+          background: #f5f5f5;
+          border: 2px solid #e5e5e5;
+          color: #9ca3af;
+          flex-shrink: 0;
+        }
+
+        .progress-step.active .progress-step-icon {
+          background: #f59e0b;
+          border-color: #f59e0b;
+          color: white;
+        }
+
+        .progress-step.completed .progress-step-icon {
+          background: #10b981;
+          border-color: #10b981;
+          color: white;
+        }
+
+        .progress-step-text {
+          font-size: 14px;
+          color: #6b6b6b;
+        }
+
+        .progress-step.active .progress-step-text {
+          font-weight: 500;
+          color: #1a1a1a;
+        }
+
+        .confirm-content {
+          text-align: center;
+        }
+
+        .modal-actions {
+          display: flex;
+          justify-content: center;
+          gap: 12px;
+          margin-top: 20px;
+        }
+
+        .docx-preview-error,
+        .docx-preview-loading {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 400px;
+          gap: 16px;
+          color: #6b6b6b;
+        }
+
+        .error-icon {
+          font-size: 48px;
+        }
+
+        .loading-spinner {
+          width: 40px;
+          height: 40px;
+          border: 3px solid #e5e5e5;
+          border-top-color: #f59e0b;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 1024px) {
+          .content-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .header-content {
+            flex-direction: column;
+            gap: 16px;
+            padding: 16px;
+          }
+
+          .main-content {
+            padding: 16px;
+          }
+        }
+      `}</style>
+    </div>
+  )
+}
