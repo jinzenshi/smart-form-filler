@@ -12,12 +12,12 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string>()
   const [loading, setLoading] = useState(false)
-  const [rendered, setRendered] = useState(false)
   const [showContent, setShowContent] = useState(false)
   const docxLibraryRef = useRef<any>(null)
   const retryCountRef = useRef(0)
   const maxRetries = 3
-  const renderTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const observerRef = useRef<MutationObserver | null>(null)
+  const hasContentRef = useRef(false)
 
   // 加载 docx-preview 库
   async function loadDocxLibrary(): Promise<void> {
@@ -32,19 +32,31 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     }
   }
 
-  // 清理函数
-  function cleanup() {
-    if (renderTimeoutRef.current) {
-      clearTimeout(renderTimeoutRef.current)
-      renderTimeoutRef.current = null
+  // 清理 observer
+  function cleanupObserver() {
+    if (observerRef.current) {
+      observerRef.current.disconnect()
+      observerRef.current = null
     }
   }
 
-  // 渲染预览 - 使用稳定引用
+  // 检测内容是否已渲染
+  function checkContentRendered() {
+    if (containerRef.current && containerRef.current.children.length > 0) {
+      hasContentRef.current = true
+      setShowContent(true)
+      setLoading(false)
+      onRendered?.()
+      cleanupObserver()
+      return true
+    }
+    return false
+  }
+
+  // 渲染预览
   const renderPreview = useCallback(async () => {
     if (!blob || !containerRef.current) return
 
-    cleanup()
     setError(undefined)
     setLoading(true)
     retryCountRef.current++
@@ -54,6 +66,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
       // 清空容器
       containerRef.current.innerHTML = ''
+      hasContentRef.current = false
 
       // 获取渲染函数
       const renderFn = docxLibraryRef.current.renderDocx || docxLibraryRef.current.renderAsync
@@ -61,6 +74,17 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       if (typeof renderFn !== 'function') {
         throw new Error('docx-preview 渲染函数不可用')
       }
+
+      // 设置 MutationObserver 监听内容变化
+      cleanupObserver()
+      observerRef.current = new MutationObserver(() => {
+        checkContentRendered()
+      })
+
+      observerRef.current.observe(containerRef.current, {
+        childList: true,
+        subtree: true
+      })
 
       // 渲染选项
       const renderOptions = {
@@ -72,37 +96,49 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         enableMultiWorker: false,
       }
 
-      // 创建超时保护
-      const renderPromise = renderFn(blob, containerRef.current, renderOptions)
+      // 开始渲染
+      await renderFn(blob, containerRef.current, renderOptions)
 
-      renderTimeoutRef.current = setTimeout(() => {
-        // 如果渲染超时，强制显示已渲染的内容
-        if (!showContent) {
-          console.warn('DocxPreview render timeout, showing partial content')
-          setRendered(true)
-          setShowContent(true)
-          onRendered?.()
+      // 等待一下让内容渲染
+      await new Promise(resolve => setTimeout(resolve, 500))
+
+      // 检查内容
+      if (!checkContentRendered()) {
+        // 如果没有内容，可能是资源加载错误，继续等待
+        await new Promise(resolve => setTimeout(resolve, 3000))
+        if (!checkContentRendered()) {
+          // 设置超时，强制显示已渲染的内容
+          setTimeout(() => {
+            if (containerRef.current && containerRef.current.children.length > 0) {
+              setShowContent(true)
+              setLoading(false)
+              onRendered?.()
+            } else if (retryCountRef.current < maxRetries) {
+              // 重试
+              setTimeout(() => renderPreview(), 1500)
+            } else {
+              setError('文档加载失败，请重试')
+              onError?.('文档加载失败，请重试')
+              setLoading(false)
+            }
+          }, 5000)
+          return
         }
-      }, 8000) // 8秒超时
-
-      await renderPromise
-
-      // 渲染成功
-      cleanup()
-      setRendered(true)
-      setShowContent(true)
-      onRendered?.()
+      }
 
     } catch (err: any) {
-      cleanup()
       console.error('DocxPreview render error:', err)
 
-      // 如果还有重试次数，延迟重试
+      // 检查是否有内容
+      if (containerRef.current && containerRef.current.children.length > 0) {
+        setShowContent(true)
+        setLoading(false)
+        onRendered?.()
+        return
+      }
+
       if (retryCountRef.current < maxRetries) {
-        setLoading(true)
-        renderTimeoutRef.current = setTimeout(() => {
-          renderPreview()
-        }, 1500)
+        setTimeout(() => renderPreview(), 1500)
         return
       }
 
@@ -111,7 +147,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       onError?.(errorMsg)
       setLoading(false)
     }
-  }, [blob, showContent, onRendered, onError])
+  }, [blob, onRendered, onError])
 
   // blob 变化时触发渲染
   useEffect(() => {
@@ -119,7 +155,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       retryCountRef.current = 0
       renderPreview()
     }
-    return cleanup
+    return () => {
+      cleanupObserver()
+    }
   }, [blob, showContent, renderPreview])
 
   // 重试处理
@@ -128,7 +166,6 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     e.stopPropagation()
     retryCountRef.current = 0
     setError(undefined)
-    setRendered(false)
     setShowContent(false)
     renderPreview()
   }
