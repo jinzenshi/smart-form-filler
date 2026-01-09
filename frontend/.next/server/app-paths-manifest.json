@@ -1,12 +1,12 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/login/page": "app/login/page.js",
   "/page": "app/page.js",
+  "/login/page": "app/login/page.js",
+  "/(authenticated)/admin/page": "app/(authenticated)/admin/page.js",
+  "/(authenticated)/admin/users/page": "app/(authenticated)/admin/users/page.js",
+  "/(authenticated)/admin/files/page": "app/(authenticated)/admin/files/page.js",
   "/(authenticated)/admin/logs/page": "app/(authenticated)/admin/logs/page.js",
   "/(authenticated)/admin/temp-accounts/page": "app/(authenticated)/admin/temp-accounts/page.js",
-  "/(authenticated)/admin/files/page": "app/(authenticated)/admin/files/page.js",
-  "/(authenticated)/admin/tokens/page": "app/(authenticated)/admin/tokens/page.js",
   "/(authenticated)/admin/feedbacks/page": "app/(authenticated)/admin/feedbacks/page.js",
-  "/(authenticated)/admin/page": "app/(authenticated)/admin/page.js",
-  "/(authenticated)/admin/users/page": "app/(authenticated)/admin/users/page.js"
+  "/(authenticated)/admin/tokens/page": "app/(authenticated)/admin/tokens/page.js"
 }
