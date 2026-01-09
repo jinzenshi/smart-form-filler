@@ -1,12 +1,11 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getAuthData } from '@/lib/auth-client'
 import { processDocx, getTokenBalance, base64ToBlob } from '@/lib/docx'
 import { DocxPreview } from '@/components/docx/DocxPreview'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/common/Toast'
 
@@ -47,7 +46,11 @@ const DEFAULT_USER_INFO = `# 报名登记表（虚拟信息）
 export function WorkbenchPage() {
   const router = useRouter()
   const toast = useToast()
-  const { username, token } = getAuthData()
+  const { token } = getAuthData()
+
+  // Hydration guard
+  const [mounted, setMounted] = useState(false)
+  const [username, setUsername] = useState<string | null>(null)
 
   // 文件上传状态
   const docxInputRef = useRef<HTMLInputElement>(null)
@@ -59,7 +62,8 @@ export function WorkbenchPage() {
 
   // 信息填写方式
   const [infoTab, setInfoTab] = useState<'manual' | 'upload'>('manual')
-  const [userInfo, setUserInfo] = useState(DEFAULT_USER_INFO)
+  // 使用函数初始化器避免 hydration 不匹配
+  const [userInfo, setUserInfo] = useState(() => DEFAULT_USER_INFO)
 
   // 预览状态
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
@@ -82,6 +86,11 @@ export function WorkbenchPage() {
 
   // 初始化
   useEffect(() => {
+    setMounted(true)
+    // 从 localStorage 获取用户名
+    const savedUsername = localStorage.getItem('username')
+    setUsername(savedUsername)
+
     // 检查登录状态
     if (!token) {
       router.push('/login')
