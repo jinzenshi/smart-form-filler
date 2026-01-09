@@ -19,8 +19,8 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     if (docxLibraryRef.current) return
 
     try {
-      const module = await import('docx-preview')
-      docxLibraryRef.current = module.default || module
+      const docxModule = await import('docx-preview')
+      docxLibraryRef.current = docxModule.default || docxModule
     } catch (err) {
       throw new Error('docx-preview 库加载失败')
     }
