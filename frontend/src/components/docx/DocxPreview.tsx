@@ -18,10 +18,19 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   const maxRetries = 3
   const observerRef = useRef<MutationObserver | null>(null)
   const isUnmountedRef = useRef(false)
+  const timeoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 检查组件是否已卸载
   function isUnmounted() {
     return isUnmountedRef.current || !containerRef.current
+  }
+
+  // 清理超时定时器
+  function cleanupTimeout() {
+    if (timeoutTimerRef.current) {
+      clearTimeout(timeoutTimerRef.current)
+      timeoutTimerRef.current = null
+    }
   }
 
   // 加载 docx-preview 库
@@ -49,6 +58,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   function checkContentRendered() {
     if (isUnmounted()) return false
     if (containerRef.current && containerRef.current.children.length > 0) {
+      cleanupTimeout()
       setShowContent(true)
       setLoading(false)
       onRendered?.()
@@ -58,10 +68,29 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     return false
   }
 
+  // 强制显示内容（用于超时处理）
+  function forceShowContent() {
+    if (isUnmounted()) return false
+    const content = containerRef.current
+    if (content) {
+      const hasContent = content.children.length > 0 || content.innerHTML.trim().length > 0
+      if (hasContent) {
+        cleanupTimeout()
+        setShowContent(true)
+        setLoading(false)
+        onRendered?.()
+        cleanupObserver()
+        return true
+      }
+    }
+    return false
+  }
+
   // 渲染预览
   const renderPreview = useCallback(async () => {
     if (!blob || !containerRef.current || isUnmountedRef.current) return
 
+    cleanupTimeout()
     setError(undefined)
     setLoading(true)
     retryCountRef.current++
@@ -82,9 +111,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
       // 设置 MutationObserver 监听内容变化
       cleanupObserver()
-      let observerTriggered = false
       observerRef.current = new MutationObserver(() => {
-        observerTriggered = true
         checkContentRendered()
       })
 
@@ -118,17 +145,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
         if (!checkContentRendered()) {
           // 设置超时，强制显示已渲染的内容或报告错误
-          const checkTimer = setTimeout(() => {
-            if (!isUnmounted() && containerRef.current) {
-              const content = containerRef.current
-              const hasContent = content.children.length > 0 || content.innerHTML.trim().length > 0
-
-              if (hasContent) {
-                // 即使没检测到也强制显示
-                setShowContent(true)
-                setLoading(false)
-                onRendered?.()
-              } else if (retryCountRef.current < maxRetries && !isUnmountedRef.current) {
+          timeoutTimerRef.current = setTimeout(() => {
+            if (!forceShowContent()) {
+              if (retryCountRef.current < maxRetries && !isUnmountedRef.current) {
                 // 重试
                 setTimeout(() => renderPreview(), 1500)
               } else if (!isUnmountedRef.current) {
@@ -138,9 +157,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
               }
             }
           }, 3000)
-
-          // 清理 timer
-          return () => clearTimeout(checkTimer)
+          return
         }
       }
 
@@ -178,6 +195,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     return () => {
       isUnmountedRef.current = true
       cleanupObserver()
+      cleanupTimeout()
     }
   }, [blob, showContent, renderPreview])
 
