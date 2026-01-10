@@ -40,7 +40,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     try {
       const docxModule = await import('docx-preview')
       docxLibraryRef.current = docxModule.default || docxModule
-      console.log('DocxPreview: docx-preview library loaded successfully')
+      console.log('DocxPreview: docx-preview library loaded, available functions:', Object.keys(docxLibraryRef.current))
+      console.log('DocxPreview: renderDocx:', typeof docxLibraryRef.current.renderDocx)
+      console.log('DocxPreview: renderAsync:', typeof docxLibraryRef.current.renderAsync)
     } catch (err) {
       console.error('DocxPreview: Failed to load docx-preview library:', err)
       throw new Error('docx-preview 库加载失败')
