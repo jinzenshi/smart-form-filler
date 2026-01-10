@@ -62,8 +62,11 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     if (!containerRef.current) return false
     const content = containerRef.current
     if (content) {
-      // 使用与 forceShowContent 相同的检测逻辑
-      const hasContent = content.children.length > 0 || content.innerHTML.trim().length > 0
+      // 使用 innerHTML 长度检测，因为 docx-preview 在 loading-spinner 内部渲染内容
+      const innerHTMLLength = content.innerHTML.length
+      // 超过 1000 字符认为有内容渲染
+      const hasContent = innerHTMLLength > 1000
+      console.log('DocxPreview: checkContentRendered - innerHTMLLength:', innerHTMLLength, 'hasContent:', hasContent)
       if (hasContent) {
         cleanupTimeout()
         setShowContent(true)
