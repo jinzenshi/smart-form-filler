@@ -17,7 +17,12 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   const retryCountRef = useRef(0)
   const maxRetries = 3
   const observerRef = useRef<MutationObserver | null>(null)
-  const hasContentRef = useRef(false)
+  const isUnmountedRef = useRef(false)
+
+  // 检查组件是否已卸载
+  function isUnmounted() {
+    return isUnmountedRef.current || !containerRef.current
+  }
 
   // 加载 docx-preview 库
   async function loadDocxLibrary(): Promise<void> {
@@ -42,8 +47,8 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 检测内容是否已渲染
   function checkContentRendered() {
+    if (isUnmounted()) return false
     if (containerRef.current && containerRef.current.children.length > 0) {
-      hasContentRef.current = true
       setShowContent(true)
       setLoading(false)
       onRendered?.()
@@ -55,7 +60,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 渲染预览
   const renderPreview = useCallback(async () => {
-    if (!blob || !containerRef.current) return
+    if (!blob || !containerRef.current || isUnmountedRef.current) return
 
     setError(undefined)
     setLoading(true)
@@ -64,9 +69,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     try {
       await loadDocxLibrary()
 
-      // 清空容器
+      // 清空容器 - 再次检查 ref
+      if (isUnmounted()) return
       containerRef.current.innerHTML = ''
-      hasContentRef.current = false
 
       // 获取渲染函数
       const renderFn = docxLibraryRef.current.renderDocx || docxLibraryRef.current.renderAsync
@@ -81,10 +86,12 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         checkContentRendered()
       })
 
-      observerRef.current.observe(containerRef.current, {
-        childList: true,
-        subtree: true
-      })
+      if (!isUnmounted() && containerRef.current) {
+        observerRef.current.observe(containerRef.current, {
+          childList: true,
+          subtree: true
+        })
+      }
 
       // 渲染选项
       const renderOptions = {
@@ -109,14 +116,14 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         if (!checkContentRendered()) {
           // 设置超时，强制显示已渲染的内容
           setTimeout(() => {
-            if (containerRef.current && containerRef.current.children.length > 0) {
+            if (!isUnmounted() && containerRef.current && containerRef.current.children.length > 0) {
               setShowContent(true)
               setLoading(false)
               onRendered?.()
-            } else if (retryCountRef.current < maxRetries) {
+            } else if (retryCountRef.current < maxRetries && !isUnmountedRef.current) {
               // 重试
               setTimeout(() => renderPreview(), 1500)
-            } else {
+            } else if (!isUnmountedRef.current) {
               setError('文档加载失败，请重试')
               onError?.('文档加载失败，请重试')
               setLoading(false)
@@ -130,22 +137,24 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       console.error('DocxPreview render error:', err)
 
       // 检查是否有内容
-      if (containerRef.current && containerRef.current.children.length > 0) {
+      if (!isUnmounted() && containerRef.current && containerRef.current.children.length > 0) {
         setShowContent(true)
         setLoading(false)
         onRendered?.()
         return
       }
 
-      if (retryCountRef.current < maxRetries) {
+      if (retryCountRef.current < maxRetries && !isUnmountedRef.current) {
         setTimeout(() => renderPreview(), 1500)
         return
       }
 
-      const errorMsg = err.message || '文档加载失败，请重试'
-      setError(errorMsg)
-      onError?.(errorMsg)
-      setLoading(false)
+      if (!isUnmountedRef.current) {
+        const errorMsg = err.message || '文档加载失败，请重试'
+        setError(errorMsg)
+        onError?.(errorMsg)
+        setLoading(false)
+      }
     }
   }, [blob, onRendered, onError])
 
@@ -156,6 +165,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       renderPreview()
     }
     return () => {
+      isUnmountedRef.current = true
       cleanupObserver()
     }
   }, [blob, showContent, renderPreview])
