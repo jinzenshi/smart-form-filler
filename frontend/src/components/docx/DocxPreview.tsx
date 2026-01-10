@@ -150,10 +150,16 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 渲染预览
   const renderPreview = useCallback(async () => {
-    if (!blob || !containerRef.current) {
+    // 优先使用 ref，如果 ref 为 null，则尝试直接查询 DOM
+    let content = containerRef.current
+    if (!content) {
+      content = document.querySelector('.docx-preview-loading, .docx-preview-content, .docx-preview-error')
+    }
+
+    if (!blob || !content) {
       console.log('DocxPreview: Skipping render - missing requirements', {
         hasBlob: !!blob,
-        hasContainer: !!containerRef.current
+        hasContainer: !!content
       })
       return
     }
@@ -170,10 +176,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     try {
       await loadDocxLibrary()
 
-      // 清空容器 - 再次检查 ref
-      if (!containerRef.current) return
+      // 清空容器
       console.log('DocxPreview: Clearing container')
-      containerRef.current.innerHTML = ''
+      content.innerHTML = ''
 
       // 获取渲染函数 - 优先使用 renderDocx，否则使用 renderAsync
       const renderDocx = docxLibraryRef.current.renderDocx
