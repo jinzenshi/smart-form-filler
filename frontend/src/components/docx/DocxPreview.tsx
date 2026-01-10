@@ -155,9 +155,11 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       console.log('DocxPreview: Starting renderDocx with options:', renderOptions, 'using:', renderFn === renderAsync ? 'renderAsync' : 'renderDocx')
 
       // 使用 Promise 包装渲染调用
+      // renderAsync 签名: renderAsync(document, bodyContainer, styleContainer, options)
       await new Promise<void>((resolve, reject) => {
         try {
-          renderDocx(blob, containerRef.current!, renderOptions)
+          // 使用 renderFn（可能是 renderAsync 或 renderDocx）
+          renderFn(blob, containerRef.current!, null, renderOptions)
           console.log('DocxPreview: renderDocx called successfully')
           resolve()
         } catch (renderError: any) {
