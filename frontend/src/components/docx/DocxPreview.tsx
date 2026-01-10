@@ -326,6 +326,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
             })
             .catch((err: any) => {
               console.error('DocxPreview: renderAsync promise rejected:', err)
+              console.error('DocxPreview: Error details:', JSON.stringify(err, Object.getOwnPropertyNames(err)))
+              console.error('DocxPreview: Error message:', err?.message || 'no message')
+              console.error('DocxPreview: Error stack:', err?.stack || 'no stack')
             })
         }
       } catch (renderError: any) {
