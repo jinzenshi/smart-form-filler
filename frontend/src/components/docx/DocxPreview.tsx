@@ -84,27 +84,28 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   function forceShowContent() {
     if (!containerRef.current) return false
     const content = containerRef.current
-    if (content) {
-      const hasContent = content.children.length > 0 || content.innerHTML.trim().length > 0
-      if (hasContent) {
-        cleanupTimeout()
-        // 直接操作 DOM 移除 loading 状态
-        content.classList.remove('loading-spinner')
-        content.classList.add('docx-preview-content')
-        // 移除 loading-spinner 子元素
-        const spinner = content.querySelector('.loading-spinner')
-        if (spinner) {
-          const spinnerContent = spinner.innerHTML
-          spinner.remove()
-          content.innerHTML = spinnerContent
-        }
-        setShowContent(true)
-        setLoading(false)
-        onRendered?.()
-        cleanupObserver()
-        console.log('DocxPreview: Force showed content')
-        return true
+    // 使用 innerHTML 长度检测
+    const innerHTMLLength = content.innerHTML.length
+    const hasContent = innerHTMLLength > 1000
+    console.log('DocxPreview: forceShowContent - innerHTMLLength:', innerHTMLLength, 'hasContent:', hasContent)
+    if (hasContent) {
+      cleanupTimeout()
+      // 直接操作 DOM 移除 loading 状态
+      content.classList.remove('loading-spinner')
+      content.classList.add('docx-preview-content')
+      // 移除 loading-spinner 子元素
+      const spinner = content.querySelector('.loading-spinner')
+      if (spinner) {
+        const spinnerContent = spinner.innerHTML
+        spinner.remove()
+        content.innerHTML = spinnerContent
       }
+      setShowContent(true)
+      setLoading(false)
+      onRendered?.()
+      cleanupObserver()
+      console.log('DocxPreview: Force showed content')
+      return true
     }
     return false
   }
