@@ -59,11 +59,15 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 检测内容是否已渲染
   function checkContentRendered() {
-    if (!containerRef.current) {
-      console.log('DocxPreview: checkContentRendered - no container ref')
+    // 优先使用 ref，如果 ref 为 null，则尝试直接查询 DOM
+    let content: HTMLElement | null = containerRef.current
+    if (!content) {
+      content = document.querySelector('.docx-preview-loading, .docx-preview-content, .docx-preview-error')
+    }
+    if (!content) {
+      console.log('DocxPreview: checkContentRendered - no container found')
       return false
     }
-    const content = containerRef.current
     // 使用 innerHTML 长度检测，因为 docx-preview 在 loading-spinner 内部渲染内容
     const innerHTMLLength = content.innerHTML.length
     // 超过 1000 字符认为有内容渲染
@@ -87,7 +91,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       content.innerHTML = ''
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          content.innerHTML = currentHTML
+          content!.innerHTML = currentHTML
         })
       })
       setShowContent(true)
