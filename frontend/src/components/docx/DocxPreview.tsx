@@ -176,7 +176,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
       // renderAsync 签名: renderAsync(document, bodyContainer, styleContainer, options)
       // renderAsync 返回一个 Promise，在服务器环境可能表现不同
-      // 我们不等待 Promise 完成，而是依赖 MutationObserver 来检测内容变化
+      // 我们不等待 Promise 完成，而是依赖 MutationObserver 和 Promise resolve 回调来检测内容变化
       try {
         const renderResult = renderFn(blob, containerRef.current!, null, renderOptions)
         console.log('DocxPreview: renderDocx called, result type:', typeof renderResult)
@@ -184,7 +184,23 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         if (renderResult instanceof Promise) {
           renderResult
             .then(() => {
-              console.log('DocxPreview: renderAsync promise resolved')
+              console.log('DocxPreview: renderAsync promise resolved, checking content...')
+              // 等待一下让 DOM 更新，然后强制检查并更新状态
+              setTimeout(() => {
+                const content = containerRef.current
+                if (content) {
+                  const innerHTMLLength = content.innerHTML.length
+                  console.log('DocxPreview: After promise resolve, innerHTML length:', innerHTMLLength)
+                  if (innerHTMLLength > 1000) {
+                    cleanupTimeout()
+                    setShowContent(true)
+                    setLoading(false)
+                    onRendered?.()
+                    cleanupObserver()
+                    console.log('DocxPreview: Content rendered successfully (from promise callback)')
+                  }
+                }
+              }, 500)
             })
             .catch((err: any) => {
               console.error('DocxPreview: renderAsync promise rejected:', err)
