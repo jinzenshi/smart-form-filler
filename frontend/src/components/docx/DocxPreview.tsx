@@ -191,7 +191,6 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         ignoreWidth: false,
         breakPages: true,
         useBase64URL: true, // 使用 base64 URL 避免可能的 worker 问题
-        enableMultiWorker: false,
         debug: true, // 启用调试模式捕获隐藏错误
       }
 
