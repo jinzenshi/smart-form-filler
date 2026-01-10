@@ -140,7 +140,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     const innerHTMLLength = content.innerHTML.length
     const hasContent = innerHTMLLength > 1000
     const hasDocxWrapper = content.innerHTML.includes('docx-wrapper')
-    console.log('DocxPreview: forceShowContent - innerHTMLLength:', innerHTMLLength, 'hasContent:', hasContent, 'hasDocxWrapper:', hasDocxWrapper)
+    const hasW = content.innerHTML.includes('class="W')
+    const hasMso = content.innerHTML.includes('mso-')
+    console.log('DocxPreview: forceShowContent - innerHTMLLength:', innerHTMLLength, 'hasContent:', hasContent, 'hasDocxWrapper:', hasDocxWrapper, 'hasW:', hasW)
     if (hasContent || hasDocxWrapper) {
       isRenderedRef.current = true
       cleanupTimeout()
