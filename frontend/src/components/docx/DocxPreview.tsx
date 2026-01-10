@@ -77,7 +77,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     return false
   }
 
-  // 强制显示内容（用于超时处理）
+  // 强制显示内容（用于超时处理）- 直接操作 DOM
   function forceShowContent() {
     if (!containerRef.current) return false
     const content = containerRef.current
@@ -85,6 +85,16 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       const hasContent = content.children.length > 0 || content.innerHTML.trim().length > 0
       if (hasContent) {
         cleanupTimeout()
+        // 直接操作 DOM 移除 loading 状态
+        content.classList.remove('loading-spinner')
+        content.classList.add('docx-preview-content')
+        // 移除 loading-spinner 子元素
+        const spinner = content.querySelector('.loading-spinner')
+        if (spinner) {
+          const spinnerContent = spinner.innerHTML
+          spinner.remove()
+          content.innerHTML = spinnerContent
+        }
         setShowContent(true)
         setLoading(false)
         onRendered?.()
