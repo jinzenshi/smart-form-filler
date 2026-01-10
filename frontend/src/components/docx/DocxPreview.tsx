@@ -60,14 +60,19 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   // 检测内容是否已渲染
   function checkContentRendered() {
     if (isUnmounted()) return false
-    if (containerRef.current && containerRef.current.children.length > 0) {
-      cleanupTimeout()
-      setShowContent(true)
-      setLoading(false)
-      onRendered?.()
-      cleanupObserver()
-      console.log('DocxPreview: Content rendered successfully')
-      return true
+    const content = containerRef.current
+    if (content) {
+      // 使用与 forceShowContent 相同的检测逻辑
+      const hasContent = content.children.length > 0 || content.innerHTML.trim().length > 0
+      if (hasContent) {
+        cleanupTimeout()
+        setShowContent(true)
+        setLoading(false)
+        onRendered?.()
+        cleanupObserver()
+        console.log('DocxPreview: Content rendered successfully')
+        return true
+      }
     }
     return false
   }
