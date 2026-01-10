@@ -267,7 +267,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         ignoreWidth: false,
         breakPages: true,
         useBase64URL: true, // 使用 base64 URL 避免可能的 worker 问题
-        debug: true, // 启用调试模式捕获隐藏错误
+        debug: false, // 关闭调试模式减少控制台噪音
       }
 
       console.log('DocxPreview: Starting renderDocx with options:', renderOptions, 'using:', renderFn === renderAsync ? 'renderAsync' : 'renderDocx')
@@ -276,7 +276,8 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       // renderAsync 返回一个 Promise，在服务器环境可能表现不同
       // 我们不等待 Promise 完成，而是依赖 MutationObserver 和 Promise resolve 回调来检测内容变化
       try {
-        const renderResult = renderFn(blob, containerRef.current!, null, renderOptions)
+        // 修复：将 container 同时作为内容容器和样式容器传递，避免库内部操作 null.innerHTML
+        const renderResult = renderFn(blob, containerRef.current!, containerRef.current!, renderOptions)
         console.log('DocxPreview: renderDocx called, result type:', typeof renderResult)
         // 如果是 Promise，添加成功/失败处理但不阻塞
         if (renderResult instanceof Promise) {
