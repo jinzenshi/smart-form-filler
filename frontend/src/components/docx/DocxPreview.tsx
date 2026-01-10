@@ -79,7 +79,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 强制显示内容（用于超时处理）
   function forceShowContent() {
-    if (isUnmounted()) return false
+    if (!containerRef.current) return false
     const content = containerRef.current
     if (content) {
       const hasContent = content.children.length > 0 || content.innerHTML.trim().length > 0
