@@ -165,13 +165,23 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
             // 直接操作 DOM 移除 loading 状态
             content.classList.remove('loading-spinner')
             content.classList.add('docx-preview-content')
-            // 移除 loading-spinner 子元素
+            // 移除 loading-spinner 子元素，保留内容
             const spinner = content.querySelector('.loading-spinner')
             if (spinner) {
               const spinnerContent = spinner.innerHTML
               spinner.remove()
+              // 强制刷新：重新设置 innerHTML
               content.innerHTML = spinnerContent
             }
+            // 强制 React 重新渲染：保存当前内容，临时清空再恢复
+            const currentHTML = content.innerHTML
+            content.innerHTML = ''
+            // 使用 requestAnimationFrame 确保 DOM 更新
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                content.innerHTML = currentHTML
+              })
+            })
             setShowContent(true)
             setLoading(false)
             onRendered?.()
