@@ -20,9 +20,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   const currentBlobRef = useRef<Blob | null>(null)
   const timeoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // 检查组件是否已卸载
-  function isUnmounted() {
-    return isUnmountedRef.current || !containerRef.current
+  // 检查 blob 是否仍然有效（防止 stale callbacks）
+  function isCurrentBlob(blob: Blob | null) {
+    return blob === currentBlobRef.current && containerRef.current
   }
 
   // 清理超时定时器
