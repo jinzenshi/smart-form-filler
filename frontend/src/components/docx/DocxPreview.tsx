@@ -444,6 +444,24 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     )
   }
 
+  // 渲染前的加载状态
+  return (
+    <div className="docx-preview">
+      <div className="docx-preview-loading">
+        <style ref={(el) => {
+          // 保存 style 容器引用用于 renderAsync
+          if (el && containerRef.current) {
+            (containerRef.current as any).styleContainer = el
+          }
+        }}></style>
+        <div ref={containerRef} className="loading-spinner">
+          <div className="loading-spinner"></div>
+          <p>正在加载文档...</p>
+        </div>
+      </div>
+    </div>
+  )
+
   if (error) {
     return (
       <div className="docx-preview-error">
