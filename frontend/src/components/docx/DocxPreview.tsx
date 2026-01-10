@@ -186,6 +186,8 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     currentBlobRef.current = blob
 
     console.log('DocxPreview: Starting render, blob size:', blob.size)
+    // 重置渲染状态
+    isRenderedRef.current = false
     cleanupTimeout()
     setError(undefined)
     setLoading(true)
