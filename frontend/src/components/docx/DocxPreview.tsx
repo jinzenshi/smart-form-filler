@@ -249,7 +249,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       console.error('DocxPreview render error:', err.message || err)
 
       // 检查是否有内容
-      if (!isUnmounted() && containerRef.current && containerRef.current.children.length > 0) {
+      if (containerRef.current && containerRef.current.children.length > 0) {
         console.log('DocxPreview: Error but content exists, showing it')
         setShowContent(true)
         setLoading(false)
@@ -257,13 +257,13 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         return
       }
 
-      if (retryCountRef.current < maxRetries && !isUnmountedRef.current) {
+      if (retryCountRef.current < maxRetries && containerRef.current) {
         console.log('DocxPreview: Retrying after error...')
         setTimeout(() => renderPreview(), 1500)
         return
       }
 
-      if (!isUnmountedRef.current) {
+      if (containerRef.current) {
         const errorMsg = err.message || '文档加载失败，请重试'
         setError(errorMsg)
         onError?.(errorMsg)
@@ -280,7 +280,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       renderPreview()
     }
     return () => {
-      isUnmountedRef.current = true
+      // 清理时检查是否是当前 blob，避免干扰新 blob 的渲染
       cleanupObserver()
       cleanupTimeout()
     }
