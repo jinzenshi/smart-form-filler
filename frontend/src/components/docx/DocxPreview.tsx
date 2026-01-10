@@ -212,7 +212,10 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       observerRef.current = new MutationObserver(() => {
         console.log('DocxPreview: MutationObserver triggered')
         // 直接检测并更新状态，不依赖 checkContentRendered
-        const content = containerRef.current
+        let content = containerRef.current
+        if (!content) {
+          content = document.querySelector('.docx-preview-loading')
+        }
         if (content) {
           // 使用 innerHTML 长度作为主要检测（docx-preview 使用 wrapper 结构）
           const innerHTMLLength = content.innerHTML.length
@@ -234,10 +237,16 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
             // 强制 React 重新渲染：保存当前内容，临时清空再恢复
             const currentHTML = content.innerHTML
             content.innerHTML = ''
+            // 保存当前 HTML 到局部变量用于后续访问
+            const htmlToRestore = currentHTML
             // 使用 requestAnimationFrame 确保 DOM 更新
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
-                content.innerHTML = currentHTML
+                // 重新获取 container ref，避免使用可能为 null 的 content 变量
+                const currentContainer = containerRef.current || document.querySelector('.docx-preview-loading')
+                if (currentContainer) {
+                  currentContainer.innerHTML = htmlToRestore
+                }
               })
             })
             setShowContent(true)
