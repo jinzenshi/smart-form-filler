@@ -116,11 +116,13 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       console.log('DocxPreview: Clearing container')
       containerRef.current.innerHTML = ''
 
-      // 获取渲染函数 - 使用 renderDocx (更稳定的版本)
+      // 获取渲染函数 - 优先使用 renderDocx，否则使用 renderAsync
       const renderDocx = docxLibraryRef.current.renderDocx
+      const renderAsync = docxLibraryRef.current.renderAsync
+      const renderFn = renderDocx || renderAsync
 
-      if (typeof renderDocx !== 'function') {
-        console.error('DocxPreview: renderDocx function not found')
+      if (typeof renderFn !== 'function') {
+        console.error('DocxPreview: No render function available. renderDocx:', typeof renderDocx, 'renderAsync:', typeof renderAsync)
         throw new Error('docx-preview 渲染函数不可用')
       }
 
