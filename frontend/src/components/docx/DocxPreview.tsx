@@ -82,7 +82,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
       // 设置 MutationObserver 监听内容变化
       cleanupObserver()
+      let observerTriggered = false
       observerRef.current = new MutationObserver(() => {
+        observerTriggered = true
         checkContentRendered()
       })
 
@@ -111,25 +113,34 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
       // 检查内容
       if (!checkContentRendered()) {
-        // 如果没有内容，可能是资源加载错误，继续等待
-        await new Promise(resolve => setTimeout(resolve, 3000))
+        // 如果没有内容，强制等待后检查
+        await new Promise(resolve => setTimeout(resolve, 2000))
+
         if (!checkContentRendered()) {
-          // 设置超时，强制显示已渲染的内容
-          setTimeout(() => {
-            if (!isUnmounted() && containerRef.current && containerRef.current.children.length > 0) {
-              setShowContent(true)
-              setLoading(false)
-              onRendered?.()
-            } else if (retryCountRef.current < maxRetries && !isUnmountedRef.current) {
-              // 重试
-              setTimeout(() => renderPreview(), 1500)
-            } else if (!isUnmountedRef.current) {
-              setError('文档加载失败，请重试')
-              onError?.('文档加载失败，请重试')
-              setLoading(false)
+          // 设置超时，强制显示已渲染的内容或报告错误
+          const checkTimer = setTimeout(() => {
+            if (!isUnmounted() && containerRef.current) {
+              const content = containerRef.current
+              const hasContent = content.children.length > 0 || content.innerHTML.trim().length > 0
+
+              if (hasContent) {
+                // 即使没检测到也强制显示
+                setShowContent(true)
+                setLoading(false)
+                onRendered?.()
+              } else if (retryCountRef.current < maxRetries && !isUnmountedRef.current) {
+                // 重试
+                setTimeout(() => renderPreview(), 1500)
+              } else if (!isUnmountedRef.current) {
+                setError('文档加载失败，请重试')
+                onError?.('文档加载失败，请重试')
+                setLoading(false)
+              }
             }
-          }, 5000)
-          return
+          }, 3000)
+
+          // 清理 timer
+          return () => clearTimeout(checkTimer)
         }
       }
 
