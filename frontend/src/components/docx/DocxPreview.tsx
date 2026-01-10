@@ -272,12 +272,23 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
       console.log('DocxPreview: Starting renderDocx with options:', renderOptions, 'using:', renderFn === renderAsync ? 'renderAsync' : 'renderDocx')
 
+      // docx-preview 需要 ArrayBuffer，不是 Blob
+      let buffer: ArrayBuffer
+      if (blob instanceof ArrayBuffer) {
+        buffer = blob
+      } else if (blob instanceof Blob) {
+        buffer = await blob.arrayBuffer()
+      } else {
+        throw new Error('Invalid document type')
+      }
+      console.log('DocxPreview: Buffer size:', buffer.byteLength, 'byteLength')
+
       // renderAsync 签名: renderAsync(document, bodyContainer, styleContainer, options)
       // renderAsync 返回一个 Promise，在服务器环境可能表现不同
       // 我们不等待 Promise 完成，而是依赖 MutationObserver 和 Promise resolve 回调来检测内容变化
       try {
         // 修复：将 container 同时作为内容容器和样式容器传递，避免库内部操作 null.innerHTML
-        const renderResult = renderFn(blob, containerRef.current!, containerRef.current!, renderOptions)
+        const renderResult = renderFn(buffer, containerRef.current!, containerRef.current!, renderOptions)
         console.log('DocxPreview: renderDocx called, result type:', typeof renderResult)
         // 如果是 Promise，添加成功/失败处理但不阻塞
         if (renderResult instanceof Promise) {
