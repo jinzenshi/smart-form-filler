@@ -98,14 +98,16 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 渲染预览
   const renderPreview = useCallback(async () => {
-    if (!blob || !containerRef.current || isUnmountedRef.current) {
+    if (!blob || !containerRef.current) {
       console.log('DocxPreview: Skipping render - missing requirements', {
         hasBlob: !!blob,
-        hasContainer: !!containerRef.current,
-        isUnmounted: isUnmountedRef.current
+        hasContainer: !!containerRef.current
       })
       return
     }
+
+    // 设置当前 blob（用于检测 stale callbacks）
+    currentBlobRef.current = blob
 
     console.log('DocxPreview: Starting render, blob size:', blob.size)
     cleanupTimeout()
@@ -117,7 +119,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       await loadDocxLibrary()
 
       // 清空容器 - 再次检查 ref
-      if (isUnmounted()) return
+      if (!containerRef.current) return
       console.log('DocxPreview: Clearing container')
       containerRef.current.innerHTML = ''
 
