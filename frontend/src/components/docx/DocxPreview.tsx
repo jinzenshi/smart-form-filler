@@ -202,8 +202,11 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
           const innerHTMLLength = content.innerHTML.length
           const hasContent = innerHTMLLength > 1000 // 大于 1000 字符认为有内容
           console.log('DocxPreview: Observer check - innerHTML length:', innerHTMLLength, 'hasContent:', hasContent)
-          if (hasContent) {
+          if (hasContent && !isRenderedRef.current) {
+            isRenderedRef.current = true
             cleanupTimeout()
+            // 断开 observer 连接，防止再次触发
+            cleanupObserver()
             // 直接操作 DOM 移除 loading 状态
             content.classList.remove('loading-spinner')
             content.classList.add('docx-preview-content')
@@ -215,8 +218,12 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
             // 更新 React 状态
             setShowContent(true)
             setLoading(false)
-            onRendered?.()
-            cleanupObserver()
+            // 使用 setTimeout 延迟调用 onRendered，避免在渲染过程中访问可能失效的 ref
+            setTimeout(() => {
+              if (isActiveRef.current) {
+                onRendered?.()
+              }
+            }, 0)
             console.log('DocxPreview: Content rendered successfully (from observer)')
           }
         }
