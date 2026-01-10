@@ -19,6 +19,17 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   const observerRef = useRef<MutationObserver | null>(null)
   const currentBlobRef = useRef<Blob | null>(null)
   const timeoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // 标记组件是否活跃，用于防止 stale callbacks
+  const isActiveRef = useRef(true)
+  // 标记是否已完成渲染
+  const isRenderedRef = useRef(false)
+
+  // 组件卸载时清理
+  useEffect(() => {
+    return () => {
+      isActiveRef.current = false
+    }
+  }, [])
 
   // 检查 blob 是否仍然有效（防止 stale callbacks）
   function isCurrentBlob(blob: Blob | null) {
