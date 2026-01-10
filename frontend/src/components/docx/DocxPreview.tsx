@@ -152,7 +152,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         enableMultiWorker: false,
       }
 
-      console.log('DocxPreview: Starting renderDocx with options:', renderOptions)
+      console.log('DocxPreview: Starting renderDocx with options:', renderOptions, 'using:', renderFn === renderAsync ? 'renderAsync' : 'renderDocx')
 
       // 使用 Promise 包装渲染调用
       await new Promise<void>((resolve, reject) => {
