@@ -175,14 +175,14 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         throw renderError
       }
 
-      // 等待一下让内容渲染
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // 等待一下让内容渲染（减少等待时间，因为 renderAsync 已经在后台运行）
+      await new Promise(resolve => setTimeout(resolve, 300))
 
       // 检查内容
       if (!checkContentRendered()) {
         console.log('DocxPreview: No content after first check, waiting...')
         // 如果没有内容，强制等待后检查
-        await new Promise(resolve => setTimeout(resolve, 2500))
+        await new Promise(resolve => setTimeout(resolve, 1500))
 
         if (!checkContentRendered()) {
           console.log('DocxPreview: No content after second check, setting timeout')
@@ -202,7 +202,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
                 setLoading(false)
               }
             }
-          }, 3000)
+          }, 2000)
           return
         }
       }
