@@ -111,7 +111,10 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     if (!content) {
       content = document.querySelector('.docx-preview-loading, .docx-preview-content, .docx-preview-error')
     }
-    if (!content) return false
+    if (!content) {
+      console.log('DocxPreview: forceShowContent - no container found')
+      return false
+    }
 
     // 使用 innerHTML 长度检测
     const innerHTMLLength = content.innerHTML.length
@@ -133,9 +136,15 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       // 强制 React 重新渲染
       const currentHTML = content.innerHTML
       content.innerHTML = ''
+      // 保存当前 HTML 到局部变量用于后续访问
+      const htmlToRestore = currentHTML
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          content!.innerHTML = currentHTML
+          // 重新获取 container ref，避免使用可能为 null 的 content 变量
+          const currentContainer = containerRef.current || document.querySelector('.docx-preview-loading')
+          if (currentContainer) {
+            currentContainer.innerHTML = htmlToRestore
+          }
         })
       })
       setShowContent(true)
