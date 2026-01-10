@@ -157,7 +157,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         }
       })
 
-      if (!isUnmounted() && containerRef.current) {
+      if (containerRef.current) {
         observerRef.current.observe(containerRef.current, {
           childList: true,
           subtree: true
