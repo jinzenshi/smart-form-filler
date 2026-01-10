@@ -190,8 +190,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         inWrapper: true,
         ignoreWidth: false,
         breakPages: true,
-        useBase64URL: false, // 改为 false，避免可能的 base64 问题
+        useBase64URL: true, // 使用 base64 URL 避免可能的 worker 问题
         enableMultiWorker: false,
+        debug: true, // 启用调试模式捕获隐藏错误
       }
 
       console.log('DocxPreview: Starting renderDocx with options:', renderOptions, 'using:', renderFn === renderAsync ? 'renderAsync' : 'renderDocx')
