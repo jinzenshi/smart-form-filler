@@ -106,13 +106,19 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 强制显示内容（用于超时处理）- 直接操作 DOM
   function forceShowContent() {
-    if (!containerRef.current) return false
-    const content = containerRef.current
+    // 优先使用 ref，如果 ref 为 null，则尝试直接查询 DOM
+    let content: HTMLElement | null = containerRef.current
+    if (!content) {
+      content = document.querySelector('.docx-preview-loading, .docx-preview-content, .docx-preview-error')
+    }
+    if (!content) return false
+
     // 使用 innerHTML 长度检测
     const innerHTMLLength = content.innerHTML.length
     const hasContent = innerHTMLLength > 1000
-    console.log('DocxPreview: forceShowContent - innerHTMLLength:', innerHTMLLength, 'hasContent:', hasContent)
-    if (hasContent) {
+    const hasDocxWrapper = content.innerHTML.includes('docx-wrapper')
+    console.log('DocxPreview: forceShowContent - innerHTMLLength:', innerHTMLLength, 'hasContent:', hasContent, 'hasDocxWrapper:', hasDocxWrapper)
+    if (hasContent || hasDocxWrapper) {
       cleanupTimeout()
       // 直接操作 DOM 移除 loading 状态
       content.classList.remove('loading-spinner')
@@ -122,16 +128,14 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       if (spinner) {
         const spinnerContent = spinner.innerHTML
         spinner.remove()
-        // 强制刷新：重新设置 innerHTML
         content.innerHTML = spinnerContent
       }
-      // 强制 React 重新渲染：保存当前内容，临时清空再恢复
+      // 强制 React 重新渲染
       const currentHTML = content.innerHTML
       content.innerHTML = ''
-      // 使用 requestAnimationFrame 确保 DOM 更新
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          content.innerHTML = currentHTML
+          content!.innerHTML = currentHTML
         })
       })
       setShowContent(true)
