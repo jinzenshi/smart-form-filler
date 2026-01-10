@@ -40,8 +40,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     try {
       const docxModule = await import('docx-preview')
       docxLibraryRef.current = docxModule.default || docxModule
+      console.log('DocxPreview: docx-preview library loaded successfully')
     } catch (err) {
-      console.error('Failed to load docx-preview library:', err)
+      console.error('DocxPreview: Failed to load docx-preview library:', err)
       throw new Error('docx-preview 库加载失败')
     }
   }
@@ -63,6 +64,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       setLoading(false)
       onRendered?.()
       cleanupObserver()
+      console.log('DocxPreview: Content rendered successfully')
       return true
     }
     return false
@@ -80,6 +82,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         setLoading(false)
         onRendered?.()
         cleanupObserver()
+        console.log('DocxPreview: Force showed content')
         return true
       }
     }
@@ -88,8 +91,16 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 渲染预览
   const renderPreview = useCallback(async () => {
-    if (!blob || !containerRef.current || isUnmountedRef.current) return
+    if (!blob || !containerRef.current || isUnmountedRef.current) {
+      console.log('DocxPreview: Skipping render - missing requirements', {
+        hasBlob: !!blob,
+        hasContainer: !!containerRef.current,
+        isUnmounted: isUnmountedRef.current
+      })
+      return
+    }
 
+    console.log('DocxPreview: Starting render, blob size:', blob.size)
     cleanupTimeout()
     setError(undefined)
     setLoading(true)
@@ -100,18 +111,23 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
       // 清空容器 - 再次检查 ref
       if (isUnmounted()) return
+      console.log('DocxPreview: Clearing container')
       containerRef.current.innerHTML = ''
 
       // 获取渲染函数
       const renderFn = docxLibraryRef.current.renderDocx || docxLibraryRef.current.renderAsync
 
       if (typeof renderFn !== 'function') {
+        console.error('DocxPreview: render function not found')
         throw new Error('docx-preview 渲染函数不可用')
       }
+
+      console.log('DocxPreview: Setting up MutationObserver')
 
       // 设置 MutationObserver 监听内容变化
       cleanupObserver()
       observerRef.current = new MutationObserver(() => {
+        console.log('DocxPreview: MutationObserver triggered')
         checkContentRendered()
       })
 
@@ -132,27 +148,35 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         enableMultiWorker: false,
       }
 
+      console.log('DocxPreview: Starting renderDocx')
       // 开始渲染
       await renderFn(blob, containerRef.current, renderOptions)
+      console.log('DocxPreview: renderDocx completed')
 
       // 等待一下让内容渲染
       await new Promise(resolve => setTimeout(resolve, 500))
 
       // 检查内容
       if (!checkContentRendered()) {
+        console.log('DocxPreview: No content after first check, waiting...')
         // 如果没有内容，强制等待后检查
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        await new Promise(resolve => setTimeout(resolve, 2500))
 
         if (!checkContentRendered()) {
+          console.log('DocxPreview: No content after second check, setting timeout')
           // 设置超时，强制显示已渲染的内容或报告错误
           timeoutTimerRef.current = setTimeout(() => {
+            console.log('DocxPreview: Timeout reached, checking content...')
             if (!forceShowContent()) {
+              console.log('DocxPreview: Still no content, retrying or showing error')
               if (retryCountRef.current < maxRetries && !isUnmountedRef.current) {
                 // 重试
+                console.log('DocxPreview: Retrying...')
                 setTimeout(() => renderPreview(), 1500)
               } else if (!isUnmountedRef.current) {
-                setError('文档加载失败，请重试')
-                onError?.('文档加载失败，请重试')
+                const msg = '文档加载失败，请重试'
+                setError(msg)
+                onError?.(msg)
                 setLoading(false)
               }
             }
@@ -162,10 +186,11 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       }
 
     } catch (err: any) {
-      console.error('DocxPreview render error:', err)
+      console.error('DocxPreview render error:', err.message || err)
 
       // 检查是否有内容
       if (!isUnmounted() && containerRef.current && containerRef.current.children.length > 0) {
+        console.log('DocxPreview: Error but content exists, showing it')
         setShowContent(true)
         setLoading(false)
         onRendered?.()
@@ -173,6 +198,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       }
 
       if (retryCountRef.current < maxRetries && !isUnmountedRef.current) {
+        console.log('DocxPreview: Retrying after error...')
         setTimeout(() => renderPreview(), 1500)
         return
       }
@@ -189,6 +215,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   // blob 变化时触发渲染
   useEffect(() => {
     if (blob && !showContent) {
+      console.log('DocxPreview: Blob changed, starting render')
       retryCountRef.current = 0
       renderPreview()
     }
