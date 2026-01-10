@@ -268,7 +268,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       // 渲染选项 - 使用更稳定的配置
       const renderOptions = {
         className: 'docx-wrapper',
-        inWrapper: false, // 直接渲染到容器，不创建包装器
+        inWrapper: true,
         ignoreWidth: false,
         breakPages: true,
         useBase64URL: true, // 使用 base64 URL 避免可能的 worker 问题
@@ -288,12 +288,26 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       }
       console.log('DocxPreview: Buffer size:', buffer.byteLength, 'byteLength')
 
+      // renderAsync 需要 bodyContainer 和 styleContainer 两个独立的容器
+      // 获取 body 容器
+      let bodyContainer: HTMLElement | null = containerRef.current
+      // 获取 style 容器（我们在 JSX 中创建并保存到 containerRef.current.styleContainer）
+      let styleContainer: HTMLElement | null = (containerRef.current as any)?.styleContainer
+
+      // 如果 styleContainer 不存在，创建一个
+      if (!styleContainer && bodyContainer) {
+        styleContainer = document.createElement('style')
+        bodyContainer.parentNode?.insertBefore(styleContainer, bodyContainer)
+      }
+
+      console.log('DocxPreview: bodyContainer:', !!bodyContainer, 'styleContainer:', !!styleContainer)
+
       // renderAsync 签名: renderAsync(document, bodyContainer, styleContainer, options)
       // renderAsync 返回一个 Promise，在服务器环境可能表现不同
       // 我们不等待 Promise 完成，而是依赖 MutationObserver 和 Promise resolve 回调来检测内容变化
       try {
-        // 修复：将 container 同时作为内容容器和样式容器传递，避免库内部操作 null.innerHTML
-        const renderResult = renderFn(buffer, containerRef.current!, containerRef.current!, renderOptions)
+        // 使用分开的容器
+        const renderResult = renderFn(buffer, bodyContainer!, styleContainer!, renderOptions)
         console.log('DocxPreview: renderDocx called, result type:', typeof renderResult)
         // 如果是 Promise，添加成功/失败处理但不阻塞
         if (renderResult instanceof Promise) {
