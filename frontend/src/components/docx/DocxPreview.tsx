@@ -59,23 +59,43 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 检测内容是否已渲染
   function checkContentRendered() {
-    if (!containerRef.current) return false
+    if (!containerRef.current) {
+      console.log('DocxPreview: checkContentRendered - no container ref')
+      return false
+    }
     const content = containerRef.current
-    if (content) {
-      // 使用 innerHTML 长度检测，因为 docx-preview 在 loading-spinner 内部渲染内容
-      const innerHTMLLength = content.innerHTML.length
-      // 超过 1000 字符认为有内容渲染
-      const hasContent = innerHTMLLength > 1000
-      console.log('DocxPreview: checkContentRendered - innerHTMLLength:', innerHTMLLength, 'hasContent:', hasContent)
-      if (hasContent) {
-        cleanupTimeout()
-        setShowContent(true)
-        setLoading(false)
-        onRendered?.()
-        cleanupObserver()
-        console.log('DocxPreview: Content rendered successfully')
-        return true
+    // 使用 innerHTML 长度检测，因为 docx-preview 在 loading-spinner 内部渲染内容
+    const innerHTMLLength = content.innerHTML.length
+    // 超过 1000 字符认为有内容渲染
+    const hasContent = innerHTMLLength > 1000
+    const hasDocxWrapper = content.innerHTML.includes('docx-wrapper')
+    console.log('DocxPreview: checkContentRendered - innerHTMLLength:', innerHTMLLength, 'hasContent:', hasContent, 'hasDocxWrapper:', hasDocxWrapper)
+    if (hasContent || hasDocxWrapper) {
+      cleanupTimeout()
+      // 直接操作 DOM 移除 loading 状态
+      content.classList.remove('loading-spinner')
+      content.classList.add('docx-preview-content')
+      // 移除 loading-spinner 子元素，保留内容
+      const spinner = content.querySelector('.loading-spinner')
+      if (spinner) {
+        const spinnerContent = spinner.innerHTML
+        spinner.remove()
+        content.innerHTML = spinnerContent
       }
+      // 强制 React 重新渲染
+      const currentHTML = content.innerHTML
+      content.innerHTML = ''
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          content.innerHTML = currentHTML
+        })
+      })
+      setShowContent(true)
+      setLoading(false)
+      onRendered?.()
+      cleanupObserver()
+      console.log('DocxPreview: Content rendered successfully')
+      return true
     }
     return false
   }
