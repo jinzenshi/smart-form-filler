@@ -261,6 +261,10 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
               console.log('DocxPreview: renderAsync promise resolved, checking content...')
               // 等待一下让 DOM 更新，然后强制检查并更新状态
               setTimeout(() => {
+                // 检查是否已经渲染完成，避免重复处理
+                if (isRenderedRef.current || !isActiveRef.current) {
+                  return
+                }
                 let content = containerRef.current
                 if (!content) {
                   content = document.querySelector('.docx-preview-loading')
@@ -269,7 +273,10 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
                   const innerHTMLLength = content.innerHTML.length
                   console.log('DocxPreview: After promise resolve, innerHTML length:', innerHTMLLength)
                   if (innerHTMLLength > 1000) {
+                    isRenderedRef.current = true
                     cleanupTimeout()
+                    // 断开 observer 连接，防止再次触发
+                    cleanupObserver()
                     // 直接操作 DOM 移除 loading 状态
                     content.classList.remove('loading-spinner')
                     content.classList.add('docx-preview-content')
@@ -281,8 +288,12 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
                     // 更新 React 状态
                     setShowContent(true)
                     setLoading(false)
-                    onRendered?.()
-                    cleanupObserver()
+                    // 延迟调用 onRendered
+                    setTimeout(() => {
+                      if (isActiveRef.current) {
+                        onRendered?.()
+                      }
+                    }, 0)
                     console.log('DocxPreview: Content rendered successfully (from promise callback)')
                   }
                 }
