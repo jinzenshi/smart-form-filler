@@ -156,17 +156,12 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
       // 使用 Promise 包装渲染调用
       // renderAsync 签名: renderAsync(document, bodyContainer, styleContainer, options)
-      await new Promise<void>((resolve, reject) => {
-        try {
-          // 使用 renderFn（可能是 renderAsync 或 renderDocx）
-          renderFn(blob, containerRef.current!, null, renderOptions)
-          console.log('DocxPreview: renderDocx called successfully')
-          resolve()
-        } catch (renderError: any) {
-          console.error('DocxPreview: renderDocx threw error:', renderError)
-          reject(renderError)
-        }
-      })
+      // renderAsync 返回一个 Promise，需要等待它完成
+      const renderResult = renderFn(blob, containerRef.current!, null, renderOptions)
+      if (renderResult instanceof Promise) {
+        await renderResult
+      }
+      console.log('DocxPreview: renderDocx called successfully')
 
       // 等待一下让内容渲染
       await new Promise(resolve => setTimeout(resolve, 500))
