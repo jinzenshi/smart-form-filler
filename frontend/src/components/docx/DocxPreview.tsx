@@ -158,6 +158,16 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
           console.log('DocxPreview: Observer check - innerHTML length:', innerHTMLLength, 'hasContent:', hasContent)
           if (hasContent) {
             cleanupTimeout()
+            // 直接操作 DOM 移除 loading 状态
+            content.classList.remove('loading-spinner')
+            content.classList.add('docx-preview-content')
+            // 移除 loading-spinner 子元素
+            const spinner = content.querySelector('.loading-spinner')
+            if (spinner) {
+              const spinnerContent = spinner.innerHTML
+              spinner.remove()
+              content.innerHTML = spinnerContent
+            }
             setShowContent(true)
             setLoading(false)
             onRendered?.()
