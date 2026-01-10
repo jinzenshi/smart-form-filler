@@ -263,7 +263,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       // 渲染选项 - 使用更稳定的配置
       const renderOptions = {
         className: 'docx-wrapper',
-        inWrapper: true,
+        inWrapper: false, // 直接渲染到容器，不创建包装器
         ignoreWidth: false,
         breakPages: true,
         useBase64URL: true, // 使用 base64 URL 避免可能的 worker 问题
