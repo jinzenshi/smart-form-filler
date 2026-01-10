@@ -229,26 +229,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
             // 移除 loading-spinner 子元素，保留内容
             const spinner = content.querySelector('.loading-spinner')
             if (spinner) {
-              const spinnerContent = spinner.innerHTML
               spinner.remove()
-              // 强制刷新：重新设置 innerHTML
-              content.innerHTML = spinnerContent
             }
-            // 强制 React 重新渲染：保存当前内容，临时清空再恢复
-            const currentHTML = content.innerHTML
-            content.innerHTML = ''
-            // 保存当前 HTML 到局部变量用于后续访问
-            const htmlToRestore = currentHTML
-            // 使用 requestAnimationFrame 确保 DOM 更新
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                // 重新获取 container ref，避免使用可能为 null 的 content 变量
-                const currentContainer = containerRef.current || document.querySelector('.docx-preview-loading')
-                if (currentContainer) {
-                  currentContainer.innerHTML = htmlToRestore
-                }
-              })
-            })
+            // 更新 React 状态
             setShowContent(true)
             setLoading(false)
             onRendered?.()
