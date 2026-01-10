@@ -114,11 +114,11 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       console.log('DocxPreview: Clearing container')
       containerRef.current.innerHTML = ''
 
-      // 获取渲染函数
-      const renderFn = docxLibraryRef.current.renderDocx || docxLibraryRef.current.renderAsync
+      // 获取渲染函数 - 使用 renderDocx (更稳定的版本)
+      const renderDocx = docxLibraryRef.current.renderDocx
 
-      if (typeof renderFn !== 'function') {
-        console.error('DocxPreview: render function not found')
+      if (typeof renderDocx !== 'function') {
+        console.error('DocxPreview: renderDocx function not found')
         throw new Error('docx-preview 渲染函数不可用')
       }
 
@@ -138,20 +138,29 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         })
       }
 
-      // 渲染选项
+      // 渲染选项 - 使用更稳定的配置
       const renderOptions = {
         className: 'docx-wrapper',
         inWrapper: true,
         ignoreWidth: false,
         breakPages: true,
-        useBase64URL: true,
+        useBase64URL: false, // 改为 false，避免可能的 base64 问题
         enableMultiWorker: false,
       }
 
-      console.log('DocxPreview: Starting renderDocx')
-      // 开始渲染
-      await renderFn(blob, containerRef.current, renderOptions)
-      console.log('DocxPreview: renderDocx completed')
+      console.log('DocxPreview: Starting renderDocx with options:', renderOptions)
+
+      // 使用 Promise 包装渲染调用
+      await new Promise<void>((resolve, reject) => {
+        try {
+          renderDocx(blob, containerRef.current!, renderOptions)
+          console.log('DocxPreview: renderDocx called successfully')
+          resolve()
+        } catch (renderError: any) {
+          console.error('DocxPreview: renderDocx threw error:', renderError)
+          reject(renderError)
+        }
+      })
 
       // 等待一下让内容渲染
       await new Promise(resolve => setTimeout(resolve, 500))
