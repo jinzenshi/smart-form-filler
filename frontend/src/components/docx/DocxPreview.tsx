@@ -70,6 +70,10 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 检测内容是否已渲染
   function checkContentRendered() {
+    // 检查是否已经渲染完成，避免重复处理
+    if (isRenderedRef.current || !isActiveRef.current) {
+      return isRenderedRef.current
+    }
     // 优先使用 ref，如果 ref 为 null，则尝试直接查询 DOM
     let content: HTMLElement | null = containerRef.current
     if (!content) {
@@ -86,7 +90,10 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     const hasDocxWrapper = content.innerHTML.includes('docx-wrapper')
     console.log('DocxPreview: checkContentRendered - innerHTMLLength:', innerHTMLLength, 'hasContent:', hasContent, 'hasDocxWrapper:', hasDocxWrapper)
     if (hasContent || hasDocxWrapper) {
+      isRenderedRef.current = true
       cleanupTimeout()
+      // 断开 observer 连接，防止再次触发
+      cleanupObserver()
       // 直接操作 DOM 移除 loading 状态
       content.classList.remove('loading-spinner')
       content.classList.add('docx-preview-content')
@@ -98,8 +105,12 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       // 更新 React 状态
       setShowContent(true)
       setLoading(false)
-      onRendered?.()
-      cleanupObserver()
+      // 延迟调用 onRendered
+      setTimeout(() => {
+        if (isActiveRef.current) {
+          onRendered?.()
+        }
+      }, 0)
       console.log('DocxPreview: Content rendered successfully')
       return true
     }
@@ -108,6 +119,10 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 强制显示内容（用于超时处理）- 直接操作 DOM
   function forceShowContent() {
+    // 检查是否已经渲染完成，避免重复处理
+    if (isRenderedRef.current || !isActiveRef.current) {
+      return isRenderedRef.current
+    }
     // 优先使用 ref，如果 ref 为 null，则尝试直接查询 DOM
     let content: HTMLElement | null = containerRef.current
     if (!content) {
@@ -124,7 +139,10 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     const hasDocxWrapper = content.innerHTML.includes('docx-wrapper')
     console.log('DocxPreview: forceShowContent - innerHTMLLength:', innerHTMLLength, 'hasContent:', hasContent, 'hasDocxWrapper:', hasDocxWrapper)
     if (hasContent || hasDocxWrapper) {
+      isRenderedRef.current = true
       cleanupTimeout()
+      // 断开 observer 连接，防止再次触发
+      cleanupObserver()
       // 直接操作 DOM 移除 loading 状态
       content.classList.remove('loading-spinner')
       content.classList.add('docx-preview-content')
@@ -136,8 +154,12 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       // 更新 React 状态
       setShowContent(true)
       setLoading(false)
-      onRendered?.()
-      cleanupObserver()
+      // 延迟调用 onRendered
+      setTimeout(() => {
+        if (isActiveRef.current) {
+          onRendered?.()
+        }
+      }, 0)
       console.log('DocxPreview: Force showed content')
       return true
     }
