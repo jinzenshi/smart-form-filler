@@ -229,11 +229,11 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
             console.log('DocxPreview: Timeout reached, checking content...')
             if (!forceShowContent()) {
               console.log('DocxPreview: Still no content, retrying or showing error')
-              if (retryCountRef.current < maxRetries && !isUnmountedRef.current) {
+              if (retryCountRef.current < maxRetries && containerRef.current) {
                 // 重试
                 console.log('DocxPreview: Retrying...')
                 setTimeout(() => renderPreview(), 1500)
-              } else if (!isUnmountedRef.current) {
+              } else if (containerRef.current) {
                 const msg = '文档加载失败，请重试'
                 setError(msg)
                 onError?.(msg)
