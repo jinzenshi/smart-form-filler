@@ -137,7 +137,19 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       cleanupObserver()
       observerRef.current = new MutationObserver(() => {
         console.log('DocxPreview: MutationObserver triggered')
-        checkContentRendered()
+        // 直接检测并更新状态，不依赖 checkContentRendered
+        const content = containerRef.current
+        if (content) {
+          const hasContent = content.children.length > 0 || content.innerHTML.trim().length > 0
+          if (hasContent) {
+            cleanupTimeout()
+            setShowContent(true)
+            setLoading(false)
+            onRendered?.()
+            cleanupObserver()
+            console.log('DocxPreview: Content rendered successfully (from observer)')
+          }
+        }
       })
 
       if (!isUnmounted() && containerRef.current) {
