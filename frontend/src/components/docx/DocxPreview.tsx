@@ -83,12 +83,15 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       console.log('DocxPreview: checkContentRendered - no container found')
       return false
     }
-    // 使用 innerHTML 长度检测，因为 docx-preview 在 loading-spinner 内部渲染内容
+    // 使用 innerHTML 长度检测
     const innerHTMLLength = content.innerHTML.length
-    // 超过 1000 字符认为有内容渲染
+    // 超过 1000 字符认为有内容渲染（inWrapper: false 时直接渲染到容器）
     const hasContent = innerHTMLLength > 1000
+    // 检查是否有 docx 内容特征
     const hasDocxWrapper = content.innerHTML.includes('docx-wrapper')
-    console.log('DocxPreview: checkContentRendered - innerHTMLLength:', innerHTMLLength, 'hasContent:', hasContent, 'hasDocxWrapper:', hasDocxWrapper)
+    const hasW = content.innerHTML.includes('class="W')
+    const hasMso = content.innerHTML.includes('mso-')
+    console.log('DocxPreview: checkContentRendered - innerHTMLLength:', innerHTMLLength, 'hasContent:', hasContent, 'hasDocxWrapper:', hasDocxWrapper, 'hasW:', hasW)
     if (hasContent || hasDocxWrapper) {
       isRenderedRef.current = true
       cleanupTimeout()
