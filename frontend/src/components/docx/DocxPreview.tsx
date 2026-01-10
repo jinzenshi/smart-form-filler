@@ -17,7 +17,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   const retryCountRef = useRef(0)
   const maxRetries = 3
   const observerRef = useRef<MutationObserver | null>(null)
-  const isUnmountedRef = useRef(false)
+  const currentBlobRef = useRef<Blob | null>(null)
   const timeoutTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // 检查组件是否已卸载
