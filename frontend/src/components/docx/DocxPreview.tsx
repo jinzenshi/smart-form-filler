@@ -28,7 +28,14 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 渲染函数
   const renderDocx = useCallback(async () => {
-    if (!blob || !containerRef.current) return
+    // 确保容器已挂载
+    if (!containerRef.current) {
+      console.warn('DocxPreview: container not ready, waiting...')
+      setTimeout(renderDocx, 100)
+      return
+    }
+
+    if (!blob) return
 
     // 防止重复渲染同一个 blob
     if (currentBlobRef.current === blob) return
