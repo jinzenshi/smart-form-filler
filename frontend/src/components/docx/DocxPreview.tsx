@@ -16,6 +16,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   const docxLibRef = useRef<any>(null)
   const currentBlobRef = useRef<Blob | null>(null)
   const isMountedRef = useRef(true)
+  const isRenderingRef = useRef(false)
 
   // 组件卸载时标记
   useEffect(() => {
@@ -25,17 +26,40 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     }
   }, [])
 
+  // 安全调用回调
+  const safeCallRendered = useCallback(() => {
+    try {
+      onRendered?.()
+    } catch (e) {
+      console.error('onRendered callback error:', e)
+    }
+  }, [onRendered])
+
+  // 安全设置状态
+  const safeSetState = useCallback((setter: () => void) => {
+    try {
+      if (isMountedRef.current) {
+        setter()
+      }
+    } catch (e) {
+      console.error('State setter error:', e)
+    }
+  }, [])
+
   // 渲染函数
   const renderDocx = useCallback(async () => {
     if (!blob || !containerRef.current) return
+    if (isRenderingRef.current) return // 防止重复渲染
+    if (currentBlobRef.current === blob) return // 防止重复渲染同一个 blob
 
-    // 防止重复渲染同一个 blob
-    if (currentBlobRef.current === blob) return
+    isRenderingRef.current = true
     currentBlobRef.current = blob
 
-    setLoading(true)
-    setError(undefined)
-    setHasContent(false)
+    safeSetState(() => {
+      setLoading(true)
+      setError(undefined)
+      setHasContent(false)
+    })
 
     try {
       // 动态导入 docx-preview
@@ -43,7 +67,9 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       docxLibRef.current = docxModule.default || docxModule
 
       // 清空容器
-      containerRef.current.innerHTML = ''
+      if (containerRef.current) {
+        containerRef.current.innerHTML = ''
+      }
 
       // 转换 blob 为 arrayBuffer
       const buffer = blob instanceof ArrayBuffer
@@ -52,7 +78,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
       // 调用渲染
       const renderAsync = docxLibRef.current.renderAsync
-      if (typeof renderAsync === 'function') {
+      if (typeof renderAsync === 'function' && containerRef.current) {
         await renderAsync(buffer, containerRef.current, containerRef.current, {
           className: 'docx-wrapper',
           inWrapper: true,
@@ -61,25 +87,32 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
           useBase64URL: true,
         })
 
-        // 渲染成功
-        if (isMountedRef.current) {
+        // 渲染成功 - 只更新状态，不调用回调（避免潜在问题）
+        safeSetState(() => {
           setHasContent(true)
           setLoading(false)
-          onRendered?.()
-        }
+        })
       } else {
         throw new Error('renderAsync function not available')
       }
     } catch (err: any) {
       console.error('DocxPreview render error:', err)
-      if (isMountedRef.current) {
+      safeSetState(() => {
         const msg = err.message || '文档渲染失败'
         setError(msg)
-        onError?.(msg)
         setLoading(false)
-      }
+        if (onError) {
+          try {
+            onError(msg)
+          } catch (e) {
+            console.error('onError callback error:', e)
+          }
+        }
+      })
+    } finally {
+      isRenderingRef.current = false
     }
-  }, [blob, onRendered, onError])
+  }, [blob, onError, safeSetState, onRendered])
 
   // blob 变化时触发渲染
   useEffect(() => {
@@ -87,22 +120,30 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       // 延迟渲染，确保容器已挂载
       const timer = setTimeout(() => {
         renderDocx()
-      }, 200)
-      return () => clearTimeout(timer)
+      }, 500)
+      return () => {
+        clearTimeout(timer)
+        isRenderingRef.current = false
+      }
     } else {
       currentBlobRef.current = null
-      setHasContent(false)
-      setLoading(false)
-      setError(undefined)
+      safeSetState(() => {
+        setHasContent(false)
+        setLoading(false)
+        setError(undefined)
+      })
     }
-  }, [blob, renderDocx])
+  }, [blob, renderDocx, safeSetState])
 
   // 重试处理
   const handleRetry = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     currentBlobRef.current = null
-    setError(undefined)
+    isRenderingRef.current = false
+    safeSetState(() => {
+      setError(undefined)
+    })
     if (blob) {
       renderDocx()
     }
