@@ -10,7 +10,6 @@ interface DocxPreviewProps {
 
 export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const styleRef = useRef<HTMLStyleElement | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>()
   const [hasContent, setHasContent] = useState(false)
