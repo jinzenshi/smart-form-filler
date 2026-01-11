@@ -12,54 +12,22 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>()
-  const [hasContent, setHasContent] = useState(false)
   const docxLibRef = useRef<any>(null)
   const currentBlobRef = useRef<Blob | null>(null)
-  const isMountedRef = useRef(true)
   const isRenderingRef = useRef(false)
-
-  // 组件卸载时标记
-  useEffect(() => {
-    isMountedRef.current = true
-    return () => {
-      isMountedRef.current = false
-    }
-  }, [])
-
-  // 安全调用回调
-  const safeCallRendered = useCallback(() => {
-    try {
-      onRendered?.()
-    } catch (e) {
-      console.error('onRendered callback error:', e)
-    }
-  }, [onRendered])
-
-  // 安全设置状态
-  const safeSetState = useCallback((setter: () => void) => {
-    try {
-      if (isMountedRef.current) {
-        setter()
-      }
-    } catch (e) {
-      console.error('State setter error:', e)
-    }
-  }, [])
+  const hasRenderedRef = useRef(false)
 
   // 渲染函数
   const renderDocx = useCallback(async () => {
     if (!blob || !containerRef.current) return
-    if (isRenderingRef.current) return // 防止重复渲染
-    if (currentBlobRef.current === blob) return // 防止重复渲染同一个 blob
+    if (isRenderingRef.current) return
+    if (currentBlobRef.current === blob && hasRenderedRef.current) return
 
     isRenderingRef.current = true
     currentBlobRef.current = blob
 
-    safeSetState(() => {
-      setLoading(true)
-      setError(undefined)
-      setHasContent(false)
-    })
+    setLoading(true)
+    setError(undefined)
 
     try {
       // 动态导入 docx-preview
@@ -67,16 +35,14 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       docxLibRef.current = docxModule.default || docxModule
 
       // 清空容器
-      if (containerRef.current) {
-        containerRef.current.innerHTML = ''
-      }
+      containerRef.current.innerHTML = ''
 
       // 转换 blob 为 arrayBuffer
       const buffer = blob instanceof ArrayBuffer
         ? blob
         : await blob.arrayBuffer()
 
-      // 调用渲染
+      // 调用渲染 - 不更新任何状态，避免触发重渲染
       const renderAsync = docxLibRef.current.renderAsync
       if (typeof renderAsync === 'function' && containerRef.current) {
         await renderAsync(buffer, containerRef.current, containerRef.current, {
@@ -87,32 +53,21 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
           useBase64URL: true,
         })
 
-        // 渲染成功 - 只更新状态，不调用回调（避免潜在问题）
-        safeSetState(() => {
-          setHasContent(true)
-          setLoading(false)
-        })
+        // 标记渲染完成，但不更新状态
+        hasRenderedRef.current = true
+        isRenderingRef.current = false
       } else {
         throw new Error('renderAsync function not available')
       }
     } catch (err: any) {
       console.error('DocxPreview render error:', err)
-      safeSetState(() => {
-        const msg = err.message || '文档渲染失败'
-        setError(msg)
-        setLoading(false)
-        if (onError) {
-          try {
-            onError(msg)
-          } catch (e) {
-            console.error('onError callback error:', e)
-          }
-        }
-      })
-    } finally {
       isRenderingRef.current = false
+      const msg = err.message || '文档渲染失败'
+      setError(msg)
+      setLoading(false)
+      onError?.(msg)
     }
-  }, [blob, onError, safeSetState, onRendered])
+  }, [blob, onError])
 
   // blob 变化时触发渲染
   useEffect(() => {
@@ -127,23 +82,32 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       }
     } else {
       currentBlobRef.current = null
-      safeSetState(() => {
-        setHasContent(false)
-        setLoading(false)
-        setError(undefined)
-      })
+      hasRenderedRef.current = false
+      setHasContent(false)
+      setLoading(false)
+      setError(undefined)
     }
-  }, [blob, renderDocx, safeSetState])
+  }, [blob, renderDocx])
+
+  // 需要一个状态来触发重新渲染
+  const [, setTick] = useState(0)
+  const setHasContent = useCallback((value: boolean) => {
+    // 使用 useState 来触发重新渲染
+    setTick(t => {
+      if (t === 0) return 1
+      if (t === 1) return 2
+      return 0
+    })
+  }, [])
 
   // 重试处理
   const handleRetry = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     currentBlobRef.current = null
+    hasRenderedRef.current = false
     isRenderingRef.current = false
-    safeSetState(() => {
-      setError(undefined)
-    })
+    setError(undefined)
     if (blob) {
       renderDocx()
     }
@@ -165,7 +129,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       )
     }
 
-    if (loading || (!hasContent && blob)) {
+    if (loading) {
       return (
         <div className="loading-overlay">
           <div className="loading-spinner"></div>
@@ -174,7 +138,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       )
     }
 
-    if (!blob && !hasContent) {
+    if (!blob) {
       return (
         <div className="placeholder-overlay">
           <span className="docx-icon">📝</span>
