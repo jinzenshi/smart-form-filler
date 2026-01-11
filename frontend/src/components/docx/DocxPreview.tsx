@@ -70,7 +70,10 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       // 调用渲染
       const renderAsync = docxLibRef.current.renderAsync
       if (typeof renderAsync === 'function') {
-        await renderAsync(buffer, containerRef.current, styleRef.current, {
+        // renderAsync 需要 bodyContainer 和 styleContainer
+        // 如果没有独立的 style 元素，使用 bodyContainer 作为 styleContainer
+        const styleContainer = styleRef.current || containerRef.current
+        await renderAsync(buffer, containerRef.current, styleContainer, {
           className: 'docx-wrapper',
           inWrapper: true,
           ignoreWidth: false,
