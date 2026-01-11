@@ -445,33 +445,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     renderPreview()
   }
 
-  // 如果已经渲染成功，显示内容
-  if (showContent) {
-    return (
-      <div className="docx-preview">
-        <div ref={containerRef} className="docx-preview-content"></div>
-      </div>
-    )
-  }
-
-  // 渲染前的加载状态
-  return (
-    <div className="docx-preview">
-      <div className="docx-preview-loading">
-        <style ref={(el) => {
-          // 保存 style 容器引用用于 renderAsync
-          if (el && containerRef.current) {
-            (containerRef.current as any).styleContainer = el
-          }
-        }}></style>
-        <div ref={containerRef} className="loading-spinner">
-          <div className="loading-spinner"></div>
-          <p>正在加载文档...</p>
-        </div>
-      </div>
-    </div>
-  )
-
+  // 渲染状态
   if (error) {
     return (
       <div className="docx-preview-error">
@@ -487,12 +461,21 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   if (loading) {
     return (
       <div className="docx-preview-loading">
-        <div className="loading-spinner"></div>
-        <p>正在加载文档...</p>
+        <style ref={(el) => {
+          // 保存 style 容器引用用于 renderAsync
+          if (el && containerRef.current) {
+            (containerRef.current as any).styleContainer = el
+          }
+        }}></style>
+        <div ref={containerRef} className="loading-spinner">
+          <div className="loading-spinner"></div>
+          <p>正在加载文档...</p>
+        </div>
       </div>
     )
   }
 
+  // 默认显示内容
   return (
     <div className="docx-preview">
       <div ref={containerRef} className="docx-preview-content"></div>
