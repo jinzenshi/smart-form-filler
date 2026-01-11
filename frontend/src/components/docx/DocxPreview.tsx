@@ -83,7 +83,6 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     } else {
       currentBlobRef.current = null
       hasRenderedRef.current = false
-      setHasContent(false)
       setLoading(false)
       setError(undefined)
     }
