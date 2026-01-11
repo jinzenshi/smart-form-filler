@@ -27,14 +27,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   // 渲染函数
   const renderDocx = useCallback(async () => {
-    // 确保容器已挂载
-    if (!containerRef.current) {
-      console.warn('DocxPreview: container not ready, waiting...')
-      setTimeout(renderDocx, 100)
-      return
-    }
-
-    if (!blob) return
+    if (!blob || !containerRef.current) return
 
     // 防止重复渲染同一个 blob
     if (currentBlobRef.current === blob) return
@@ -60,8 +53,6 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       // 调用渲染
       const renderAsync = docxLibRef.current.renderAsync
       if (typeof renderAsync === 'function') {
-        // renderAsync 需要 bodyContainer 和 styleContainer
-        // 直接使用容器作为两者，避免父元素不存在的问题
         await renderAsync(buffer, containerRef.current, containerRef.current, {
           className: 'docx-wrapper',
           inWrapper: true,
@@ -93,7 +84,11 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
   // blob 变化时触发渲染
   useEffect(() => {
     if (blob) {
-      renderDocx()
+      // 延迟渲染，确保容器已挂载
+      const timer = setTimeout(() => {
+        renderDocx()
+      }, 200)
+      return () => clearTimeout(timer)
     } else {
       currentBlobRef.current = null
       setHasContent(false)
@@ -113,44 +108,49 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     }
   }
 
-  // 错误状态
-  if (error) {
-    return (
-      <div className="docx-preview-error">
-        <span className="error-icon">⚠</span>
-        <p>{error}</p>
-        <button className="btn btn-secondary btn-sm" onClick={handleRetry}>
-          重试
-        </button>
-      </div>
-    )
+  // 渲染容器内容
+  const renderContent = () => {
+    if (error) {
+      return (
+        <>
+          <div className="error-overlay">
+            <span className="error-icon">⚠</span>
+            <p>{error}</p>
+            <button className="btn btn-secondary btn-sm" onClick={handleRetry}>
+              重试
+            </button>
+          </div>
+        </>
+      )
+    }
+
+    if (loading || (!hasContent && blob)) {
+      return (
+        <div className="loading-overlay">
+          <div className="loading-spinner"></div>
+          <p>正在加载文档...</p>
+        </div>
+      )
+    }
+
+    if (!blob && !hasContent) {
+      return (
+        <div className="placeholder-overlay">
+          <span className="docx-icon">📝</span>
+          <p>上传模板并填写信息后</p>
+          <p>即可预览生成效果</p>
+        </div>
+      )
+    }
+
+    return null
   }
 
-  // 加载状态
-  if (loading) {
-    return (
-      <div className="docx-preview-loading">
-        <div className="loading-spinner"></div>
-        <p>正在加载文档...</p>
-      </div>
-    )
-  }
-
-  // 空状态
-  if (!hasContent && !blob) {
-    return (
-      <div className="docx-preview-placeholder">
-        <span className="docx-icon">📝</span>
-        <p>上传模板并填写信息后</p>
-        <p>即可预览生成效果</p>
-      </div>
-    )
-  }
-
-  // 内容状态
   return (
     <div className="docx-preview">
-      <div ref={containerRef} className="docx-preview-content docx-wrapper"></div>
+      <div ref={containerRef} className="docx-preview-content docx-wrapper">
+        {renderContent()}
+      </div>
     </div>
   )
 }
