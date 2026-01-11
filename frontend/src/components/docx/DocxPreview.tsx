@@ -376,6 +376,11 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
           // 设置超时，强制显示已渲染的内容或报告错误
           timeoutTimerRef.current = setTimeout(() => {
             console.log('DocxPreview: Timeout reached, checking content...')
+            // 关键：在重试前检查是否已经渲染成功，避免重复渲染清空内容
+            if (isRenderedRef.current) {
+              console.log('DocxPreview: Already rendered, skipping retry')
+              return
+            }
             if (!forceShowContent()) {
               console.log('DocxPreview: Still no content, retrying or showing error')
               if (retryCountRef.current < maxRetries && containerRef.current) {
