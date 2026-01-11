@@ -147,7 +147,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       cleanupTimeout()
       // 断开 observer 连接，防止再次触发
       cleanupObserver()
-      // 直接操作 DOM 移除 loading 状态
+      // 直接操作 DOM 移除 loading 状态，不触发 React 重渲染
       content.classList.remove('loading-spinner')
       content.classList.add('docx-preview-content')
       // 移除 loading-spinner 子元素，保留内容
@@ -155,8 +155,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       if (spinner) {
         spinner.remove()
       }
-      // 更新 React 状态
-      setShowContent(true)
+      // 只更新 loading 状态，不切换容器
       setLoading(false)
       // 延迟调用 onRendered
       setTimeout(() => {
