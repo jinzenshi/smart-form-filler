@@ -58,22 +58,12 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         ? blob
         : await blob.arrayBuffer()
 
-      // 创建独立的 style 元素
-      if (!styleRef.current && containerRef.current.parentElement) {
-        styleRef.current = document.createElement('style')
-        containerRef.current.parentElement.insertBefore(
-          styleRef.current,
-          containerRef.current
-        )
-      }
-
       // 调用渲染
       const renderAsync = docxLibRef.current.renderAsync
       if (typeof renderAsync === 'function') {
         // renderAsync 需要 bodyContainer 和 styleContainer
-        // 如果没有独立的 style 元素，使用 bodyContainer 作为 styleContainer
-        const styleContainer = styleRef.current || containerRef.current
-        await renderAsync(buffer, containerRef.current, styleContainer, {
+        // 直接使用容器作为两者，避免父元素不存在的问题
+        await renderAsync(buffer, containerRef.current, containerRef.current, {
           className: 'docx-wrapper',
           inWrapper: true,
           ignoreWidth: false,
