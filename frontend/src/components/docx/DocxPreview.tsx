@@ -71,14 +71,6 @@ export function DocxPreview({ blob, onRendered, onError }: DocPreviewProps) {
         documents={docs}
         pluginRenderers={DocViewerRenderers}
         style={{ width: '100%', height: '100%' }}
-        config={{
-          header: {
-            disableHeader: false,
-            disableFileName: false,
-            retainURLParams: false
-          },
-          pdfVerticalGapByPercent: 10
-        }}
       />
     </div>
   )
