@@ -88,17 +88,6 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     }
   }, [blob, renderDocx])
 
-  // 需要一个状态来触发重新渲染
-  const [, setTick] = useState(0)
-  const setHasContent = useCallback((value: boolean) => {
-    // 使用 useState 来触发重新渲染
-    setTick(t => {
-      if (t === 0) return 1
-      if (t === 1) return 2
-      return 0
-    })
-  }, [])
-
   // 重试处理
   const handleRetry = (e: React.MouseEvent) => {
     e.preventDefault()
