@@ -1168,9 +1168,7 @@ export function WorkbenchPage() {
           background-color: transparent !important;
           padding: 0 !important;
           display: flex !important;
-          flex-direction: column !important;
-          align-items: center !important;
-          width: 100% !important;
+          justify-content: center !important;
         }
 
         /* 强制让文档页面居中并显示阴影 */
