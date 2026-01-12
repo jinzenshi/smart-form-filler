@@ -565,8 +565,11 @@ export function WorkbenchPage() {
                 <div className="preview-placeholder">
                   <div className="placeholder-content">
                     <span className="fun-icon">📝</span>
-                    <p className="placeholder-text">上传模板并填写信息后</p>
-                    <p className="placeholder-subtext">即可预览生成效果</p>
+                    <p className="placeholder-text">
+                      {currentStep === 1 && '填写个人信息后，点击下一步继续'}
+                      {currentStep === 2 && '上传模板后，点击下一步预览'}
+                      {currentStep === 3 && '点击"开始填充并预览"生成结果'}
+                    </p>
                   </div>
                 </div>
               )}
