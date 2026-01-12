@@ -940,7 +940,7 @@ export function WorkbenchPage() {
           justify-content: center;
           gap: 0;
           margin-bottom: 24px;
-          padding: 20px 24px;
+          padding: 16px 24px;
           background: white;
           border-radius: 12px;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
