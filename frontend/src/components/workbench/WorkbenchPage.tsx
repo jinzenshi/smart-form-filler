@@ -521,60 +521,58 @@ export function WorkbenchPage() {
             </div>
           </section>
 
-          {/* Right Panel - Preview */}
-          <section className="panel preview-panel">
-            <div className="panel-header">
-              <h2>
-                <span className="panel-icon">◫</span>
-                预览结果
-              </h2>
-              {previewBlob && (
-                <Button variant="primary" size="sm" onClick={handleDownload} disabled={loading}>
-                  下载文档
-                </Button>
-              )}
-            </div>
+          {/* Right Panel - Preview (only show in step 3) */}
+          {currentStep === 3 && (
+            <section className="panel preview-panel">
+              <div className="panel-header">
+                <h2>
+                  <span className="panel-icon">◫</span>
+                  预览结果
+                </h2>
+                {previewBlob && (
+                  <Button variant="primary" size="sm" onClick={handleDownload} disabled={loading}>
+                    下载文档
+                  </Button>
+                )}
+              </div>
 
-            <div className="panel-body">
-              {/* Progress Steps */}
-              {loading && (
-                <div className="progress-steps">
-                  <div className={`progress-step ${progressStep === 0 ? 'active' : ''} ${progressStep > 0 ? 'completed' : ''}`}>
-                    <div className="progress-step-icon">{progressStep > 0 ? '✓' : '①'}</div>
-                    <div className="progress-step-text">解析模板...</div>
+              <div className="panel-body">
+                {/* Progress Steps */}
+                {loading && (
+                  <div className="progress-steps">
+                    <div className={`progress-step ${progressStep === 0 ? 'active' : ''} ${progressStep > 0 ? 'completed' : ''}`}>
+                      <div className="progress-step-icon">{progressStep > 0 ? '✓' : '①'}</div>
+                      <div className="progress-step-text">解析模板...</div>
+                    </div>
+                    <div className={`progress-step ${progressStep === 1 ? 'active' : ''} ${progressStep > 1 ? 'completed' : ''}`}>
+                      <div className="progress-step-icon">{progressStep > 1 ? '✓' : '②'}</div>
+                      <div className="progress-step-text">智能填写...</div>
+                    </div>
+                    <div className={`progress-step ${progressStep === 2 ? 'active' : ''} ${progressStep > 2 ? 'completed' : ''}`}>
+                      <div className="progress-step-icon">{progressStep > 2 ? '✓' : '③'}</div>
+                      <div className="progress-step-text">渲染预览...</div>
+                    </div>
                   </div>
-                  <div className={`progress-step ${progressStep === 1 ? 'active' : ''} ${progressStep > 1 ? 'completed' : ''}`}>
-                    <div className="progress-step-icon">{progressStep > 1 ? '✓' : '②'}</div>
-                    <div className="progress-step-text">智能填写...</div>
-                  </div>
-                  <div className={`progress-step ${progressStep === 2 ? 'active' : ''} ${progressStep > 2 ? 'completed' : ''}`}>
-                    <div className="progress-step-icon">{progressStep > 2 ? '✓' : '③'}</div>
-                    <div className="progress-step-text">渲染预览...</div>
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* Preview */}
-              {previewBlob ? (
-                <DocxPreview
-                  blob={previewBlob}
-                  onRendered={() => {}}
-                  onError={(msg) => toast.error(msg)}
-                />
-              ) : (
-                <div className="preview-placeholder">
-                  <div className="placeholder-content">
-                    <span className="fun-icon">📝</span>
-                    <p className="placeholder-text">
-                      {currentStep === 1 && '填写个人信息后，点击下一步继续'}
-                      {currentStep === 2 && '上传模板后，点击下一步预览'}
-                      {currentStep === 3 && '点击"开始填充并预览"生成结果'}
-                    </p>
+                {/* Preview */}
+                {previewBlob ? (
+                  <DocxPreview
+                    blob={previewBlob}
+                    onRendered={() => {}}
+                    onError={(msg) => toast.error(msg)}
+                  />
+                ) : (
+                  <div className="preview-placeholder">
+                    <div className="placeholder-content">
+                      <span className="fun-icon">📝</span>
+                      <p className="placeholder-text">点击"开始填充并预览"生成结果</p>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </section>
+                )}
+              </div>
+            </section>
+          )}
         </div>
       </main>
 
