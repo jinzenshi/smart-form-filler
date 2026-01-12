@@ -1099,6 +1099,7 @@ export function WorkbenchPage() {
           color: #f59e0b;
         }
 
+        /* 旧的样式已注释，改为 panel-footer-warning
         .missing-fields-below-preview {
           padding: 16px;
           background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
@@ -1106,12 +1107,40 @@ export function WorkbenchPage() {
           border-radius: 0 0 8px 8px;
           border-top: none;
         }
+        */
+
+        .panel-footer-warning {
+          padding: 16px 24px;
+          background: #fffbeb;
+          border-top: 1px solid #fcd34d;
+          width: 100%;
+          box-sizing: border-box;
+        }
 
         .missing-fields-header {
           display: flex;
           align-items: center;
           gap: 8px;
-          margin-bottom: 12px;
+          margin-bottom: 8px;
+        }
+
+        .missing-fields-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 12px;
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+
+        .missing-field-item {
+          position: relative;
+          color: #b45309;
+          font-size: 13px;
+          background: rgba(251, 191, 36, 0.2);
+          padding: 4px 10px;
+          border-radius: 4px;
+          font-family: monospace;
         }
 
         .preview-panel .panel-body {
