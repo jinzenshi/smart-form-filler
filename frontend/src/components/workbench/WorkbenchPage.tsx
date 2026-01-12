@@ -925,6 +925,8 @@ export function WorkbenchPage() {
           line-height: 1.7;
           min-height: 200px;
           letter-spacing: 0.02em;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         .large-textarea {
@@ -932,6 +934,8 @@ export function WorkbenchPage() {
           height: calc(100vh - 420px);
           max-height: 600px;
           resize: vertical;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         /* Wizard Progress */
