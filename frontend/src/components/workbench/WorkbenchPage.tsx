@@ -782,6 +782,8 @@ export function WorkbenchPage() {
 
         .panel-body {
           padding: 24px;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         .step-section {
