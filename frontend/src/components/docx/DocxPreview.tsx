@@ -46,8 +46,8 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
       const renderAsync = docxLibRef.current.renderAsync
       if (typeof renderAsync === 'function' && containerRef.current) {
         await renderAsync(buffer, containerRef.current, containerRef.current, {
-          className: 'docx-wrapper',
-          inWrapper: true,
+          className: 'docx-preview-wrapper',
+          inWrapper: false,
           ignoreWidth: false,
           breakPages: true,
           useBase64URL: true,
