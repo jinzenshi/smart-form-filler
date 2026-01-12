@@ -1,14 +1,5 @@
 {
-  "node": {
-    "b4ac25d452e64fb3f3453bc69dde7fb31caa5791": {
-      "workers": {
-        "app/login/page": "(action-browser)/./node_modules/next/dist/build/webpack/loaders/next-flight-action-entry-loader.js?actions=%5B%5B%22%2FUsers%2Fcyhuang%2FDownloads%2Ffillform_nextjs%2Ffrontend%2Fsrc%2Fapp%2Flogin%2Factions.ts%22%2C%5B%22loginAction%22%5D%5D%5D&__client_imported__=true!"
-      },
-      "layer": {
-        "app/login/page": "action-browser"
-      }
-    }
-  },
+  "node": {},
   "edge": {},
-  "encryptionKey": "fJ79QIfbO/8uVul5nyFQmMFddpfva5oKIG+zDEeI1Os="
+  "encryptionKey": "YmcfMHJsJO8R7zReMGLHN9yCXuwaNUG+9MXTlXaP5p4="
 }

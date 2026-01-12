@@ -1119,15 +1119,35 @@ export function WorkbenchPage() {
           min-height: 500px;
           background: #f5f5f5;
           padding: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          overflow-x: auto;
         }
 
         /* DocxPreview component styles - centered with padding */
         .docx-preview {
           width: 100%;
           display: flex;
-          justify-content: center;
-          padding: 20px 24px;
+          flex-direction: column;
+          align-items: center;
+          padding: 40px 24px;
           box-sizing: border-box;
+        }
+
+        /* 强制覆盖 docx-preview 插件生成的容器 */
+        :global(.docx-wrapper) {
+          background-color: transparent !important;
+          padding: 0 !important;
+          display: flex !important;
+          justify-content: center !important;
+        }
+
+        /* 强制让文档页面居中并显示阴影 */
+        :global(.docx-wrapper section.docx) {
+          margin: 0 auto !important;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+          margin-bottom: 20px !important;
         }
 
         .docx-preview-content {
