@@ -305,7 +305,7 @@ export function WorkbenchPage() {
   function goToStep2() {
     if (canGoToStep2) {
       setCurrentStep(2)
-      setPreviewBlob(null)
+      // 保留预览结果，用户可以返回查看
     }
   }
 
