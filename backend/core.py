@@ -125,7 +125,7 @@ def analyze_missing_fields(docx_bytes, user_info_text):
         try:
             missing_fields = json.loads(content)
             if isinstance(missing_fields, list):
-                return missing_fields[:5]  # 最多返回 5 个
+                return missing_fields
             return []
         except json.JSONDecodeError:
             # 尝试提取数组格式
