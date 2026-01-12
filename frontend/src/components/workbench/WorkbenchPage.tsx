@@ -900,10 +900,114 @@ export function WorkbenchPage() {
           letter-spacing: 0.02em;
         }
 
-        .local-save-hint {
-          margin-top: 8px;
-          font-size: 12px;
+        .large-textarea {
+          min-height: 400px;
+          height: calc(100vh - 420px);
+          max-height: 600px;
+          resize: vertical;
+        }
+
+        /* Wizard Progress */
+        .wizard-progress {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0;
+          margin-bottom: 24px;
+          padding: 20px 24px;
+          background: white;
+          border-radius: 12px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          border: 1px solid #e5e5e5;
+        }
+
+        .wizard-step {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 16px;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .wizard-step:hover {
+          background: #fef3c7;
+        }
+
+        .wizard-step.active {
+          background: #fef3c7;
+        }
+
+        .wizard-step-icon {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          font-weight: 600;
+          background: #f5f5f5;
+          border: 2px solid #e5e5e5;
           color: #9ca3af;
+          transition: all 0.2s ease;
+        }
+
+        .wizard-step.active .wizard-step-icon {
+          background: linear-gradient(135deg, #f59e0b, #d97706);
+          border-color: #f59e0b;
+          color: white;
+        }
+
+        .wizard-step.completed .wizard-step-icon {
+          background: #10b981;
+          border-color: #10b981;
+          color: white;
+        }
+
+        .wizard-step-label {
+          font-size: 15px;
+          font-weight: 500;
+          color: #6b6b6b;
+          white-space: nowrap;
+        }
+
+        .wizard-step.active .wizard-step-label {
+          color: #1a1a1a;
+          font-weight: 600;
+        }
+
+        .wizard-connector {
+          width: 60px;
+          height: 2px;
+          background: #e5e5e5;
+          transition: background 0.2s ease;
+        }
+
+        .wizard-connector.active {
+          background: #f59e0b;
+        }
+
+        /* Wizard Content */
+        .wizard-content {
+          animation: fadeSlideIn 0.2s ease;
+        }
+
+        .wizard-actions {
+          display: flex;
+          gap: 12px;
+          margin-top: 24px;
+          padding-top: 20px;
+          border-top: 1px solid #e5e5e5;
+        }
+
+        .wizard-actions :global(.btn) {
+          flex: 1;
+        }
+
+        .template-section {
+          margin-bottom: 20px;
         }
 
         .action-section {
