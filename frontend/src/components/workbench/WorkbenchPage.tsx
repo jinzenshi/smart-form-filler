@@ -1147,8 +1147,10 @@ export function WorkbenchPage() {
           min-height: 500px;
           background: #f5f5f5;
           padding: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           overflow-x: auto;
-          position: relative;
         }
 
         /* DocxPreview component styles - centered with padding */
