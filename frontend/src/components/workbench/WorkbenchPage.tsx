@@ -389,140 +389,140 @@ export function WorkbenchPage() {
               </div>
 
               <div className="panel-body">
-              {/* Step 1: Fill Personal Info */}
-              {currentStep === 1 && (
-                <div className="wizard-content">
-                  <div className="info-tabs">
-                    <button
-                      className={`tab-btn ${infoTab === 'manual' ? 'active' : ''}`}
-                      onClick={() => setInfoTab('manual')}
-                    >
-                      手动填写
-                    </button>
-                    <button
-                      className={`tab-btn ${infoTab === 'upload' ? 'active' : ''}`}
-                      onClick={() => setInfoTab('upload')}
-                    >
-                      上传文件
-                    </button>
-                  </div>
-
-                  {infoTab === 'manual' && (
-                    <div className="tab-content">
-                      <textarea
-                        value={userInfo}
-                        onChange={(e) => {
-                          setUserInfo(e.target.value)
-                          saveUserInfo()
-                        }}
-                        className="input textarea code-editor large-textarea"
-                        placeholder="# 请填写要替换的变量信息..."
-                        spellCheck={false}
-                      />
-                    </div>
-                  )}
-
-                  {infoTab === 'upload' && (
-                    <div className="tab-content">
-                      <div
-                        className="file-upload-area"
-                        onClick={() => infoInputRef.current?.click()}
+                {/* Step 1: Fill Personal Info */}
+                {currentStep === 1 && (
+                  <div className="wizard-content">
+                    <div className="info-tabs">
+                      <button
+                        className={`tab-btn ${infoTab === 'manual' ? 'active' : ''}`}
+                        onClick={() => setInfoTab('manual')}
                       >
-                        <input
-                          ref={infoInputRef}
-                          type="file"
-                          accept=".txt,.md,.markdown"
-                          onChange={handleInfoSelect}
+                        手动填写
+                      </button>
+                      <button
+                        className={`tab-btn ${infoTab === 'upload' ? 'active' : ''}`}
+                        onClick={() => setInfoTab('upload')}
+                      >
+                        上传文件
+                      </button>
+                    </div>
+
+                    {infoTab === 'manual' && (
+                      <div className="tab-content">
+                        <textarea
+                          value={userInfo}
+                          onChange={(e) => {
+                            setUserInfo(e.target.value)
+                            saveUserInfo()
+                          }}
+                          className="input textarea code-editor large-textarea"
+                          placeholder="# 请填写要替换的变量信息..."
+                          spellCheck={false}
                         />
-                        <div className="upload-content">
-                          <span className="upload-icon">📋</span>
-                          <span className="upload-text">{infoFileName || '点击上传个人信息文件'}</span>
-                          <span className="upload-hint">支持 .txt .md 格式</span>
+                      </div>
+                    )}
+
+                    {infoTab === 'upload' && (
+                      <div className="tab-content">
+                        <div
+                          className="file-upload-area"
+                          onClick={() => infoInputRef.current?.click()}
+                        >
+                          <input
+                            ref={infoInputRef}
+                            type="file"
+                            accept=".txt,.md,.markdown"
+                            onChange={handleInfoSelect}
+                          />
+                          <div className="upload-content">
+                            <span className="upload-icon">📋</span>
+                            <span className="upload-text">{infoFileName || '点击上传个人信息文件'}</span>
+                            <span className="upload-hint">支持 .txt .md 格式</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  <div className="wizard-actions">
-                    <Button
-                      variant="primary"
-                      onClick={goToStep2}
-                      disabled={!canGoToStep2}
-                    >
-                      下一步：上传报名表
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 2: Upload Template */}
-              {currentStep === 2 && (
-                <div className="wizard-content">
-                  <div className="template-section">
-                    <div className="step-header">
-                      <h3>上传 DOCX 模板</h3>
-                      <Button variant="ghost" size="sm" onClick={downloadTemplate}>
-                        下载示例模板
+                    <div className="wizard-actions">
+                      <Button
+                        variant="primary"
+                        onClick={goToStep2}
+                        disabled={!canGoToStep2}
+                      >
+                        下一步：上传报名表
                       </Button>
                     </div>
-                    <div
-                      className="file-upload-area"
-                      onClick={() => docxInputRef.current?.click()}
-                    >
-                      <input
-                        ref={docxInputRef}
-                        type="file"
-                        accept=".docx"
-                        onChange={handleDocxSelect}
-                      />
-                      <div className="upload-content">
-                        <span className="upload-icon">📄</span>
-                        <span className="upload-text">{docxFileName || '点击或拖拽上传模板'}</span>
-                        <span className="upload-hint">支持 .docx 格式，最大 10MB</span>
+                  </div>
+                )}
+
+                {/* Step 2: Upload Template */}
+                {currentStep === 2 && (
+                  <div className="wizard-content">
+                    <div className="template-section">
+                      <div className="step-header">
+                        <h3>上传 DOCX 模板</h3>
+                        <Button variant="ghost" size="sm" onClick={downloadTemplate}>
+                          下载示例模板
+                        </Button>
                       </div>
+                      <div
+                        className="file-upload-area"
+                        onClick={() => docxInputRef.current?.click()}
+                      >
+                        <input
+                          ref={docxInputRef}
+                          type="file"
+                          accept=".docx"
+                          onChange={handleDocxSelect}
+                        />
+                        <div className="upload-content">
+                          <span className="upload-icon">📄</span>
+                          <span className="upload-text">{docxFileName || '点击或拖拽上传模板'}</span>
+                          <span className="upload-hint">支持 .docx 格式，最大 10MB</span>
+                        </div>
+                      </div>
+                      {docxFileName && <p className="file-note">✓ {docxFileName}</p>}
                     </div>
-                    {docxFileName && <p className="file-note">✓ {docxFileName}</p>}
-                  </div>
 
-                  <div className="wizard-actions">
-                    <Button variant="secondary" onClick={goToStep1}>
-                      上一步
-                    </Button>
-                    <Button
-                      variant="primary"
-                      onClick={handlePreviewAndGoToStep3}
-                      disabled={!canPreview || loading}
-                    >
-                      {loading ? '处理中...' : '开始填充并预览'}
-                    </Button>
+                    <div className="wizard-actions">
+                      <Button variant="secondary" onClick={goToStep1}>
+                        上一步
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={handlePreviewAndGoToStep3}
+                        disabled={!canPreview || loading}
+                      >
+                        {loading ? '处理中...' : '开始填充并预览'}
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Step 3: Preview */}
-              {currentStep === 3 && (
-                <div className="wizard-content">
-                  {/* Actions */}
-                  <div className="action-section">
-                    <Button
-                      className="action-btn"
-                      disabled={!canPreview || loading}
-                      onClick={handlePreview}
-                    >
-                      <span className="btn-icon">◉</span>
-                      {loading ? '处理中...' : '重新生成预览'}
-                    </Button>
-                  </div>
+                {/* Step 3: Preview */}
+                {currentStep === 3 && (
+                  <div className="wizard-content">
+                    {/* Actions */}
+                    <div className="action-section">
+                      <Button
+                        className="action-btn"
+                        disabled={!canPreview || loading}
+                        onClick={handlePreview}
+                      >
+                        <span className="btn-icon">◉</span>
+                        {loading ? '处理中...' : '重新生成预览'}
+                      </Button>
+                    </div>
 
-                  <div className="wizard-actions">
-                    <Button variant="secondary" onClick={goToStep2}>
-                      上一步
-                    </Button>
+                    <div className="wizard-actions">
+                      <Button variant="secondary" onClick={goToStep2}>
+                        上一步
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
-          </section>
+                )}
+              </div>
+            </section>
           )}
 
           {/* Right Panel - Preview (only show in step 3) */}
@@ -563,7 +563,7 @@ export function WorkbenchPage() {
                 {previewBlob ? (
                   <DocxPreview
                     blob={previewBlob}
-                    onRendered={() => {}}
+                    onRendered={() => { }}
                     onError={(msg) => toast.error(msg)}
                   />
                 ) : (
@@ -1147,10 +1147,8 @@ export function WorkbenchPage() {
           min-height: 500px;
           background: #f5f5f5;
           padding: 0;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          overflow-x: auto;
+          display: block;
+          overflow: auto;
         }
 
         /* DocxPreview 组件外层容器 */
@@ -1165,11 +1163,12 @@ export function WorkbenchPage() {
 
         /* --- 核心修复：强制覆盖插件生成的容器样式 --- */
 
-        /* 1. 强制 wrapper 占满宽度并垂直居中其内容 */
+        /* 1. 强制 wrapper 占满宽度或根据内容伸展，并垂直居中其内容 */
         :global(.docx-wrapper) {
           background-color: transparent !important;
           padding: 0 !important;
-          width: 100% !important;
+          width: fit-content !important;
+          min-width: 100% !important;
           display: flex !important;
           flex-direction: column !important;
           align-items: center !important;
@@ -1183,8 +1182,8 @@ export function WorkbenchPage() {
         }
 
         .docx-preview-content {
-          width: auto;
-          max-width: 900px;
+          width: fit-content;
+          min-width: 100%;
           border: none !important;
           outline: none !important;
           display: flex;

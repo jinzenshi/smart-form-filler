@@ -395,7 +395,7 @@ def infer_field_names_with_ai(placeholder_info_map, markdown_context, user_info_
 
     # 构建占位符信息
     placeholders_text = "\n".join([
-        f"- {k}: 表格{k['table_index']}第{k['row_index']}行第{k['col_index']}列"
+        f"- {k}: 表格{v['table_index']}第{v['row_index']}行第{v['col_index']}列"
         for k, v in placeholder_info_map.items()
     ])
 
