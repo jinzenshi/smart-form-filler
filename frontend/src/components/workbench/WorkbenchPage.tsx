@@ -282,6 +282,25 @@ export function WorkbenchPage() {
     router.push('/login')
   }
 
+  // Wizard 导航
+  function goToStep1() {
+    setCurrentStep(1)
+    setPreviewBlob(null)
+  }
+
+  function goToStep2() {
+    if (canGoToStep2) {
+      setCurrentStep(2)
+      setPreviewBlob(null)
+    }
+  }
+
+  function goToStep3() {
+    if (canGoToStep3 && canGoToStep2) {
+      setCurrentStep(3)
+    }
+  }
+
   return (
     <div className="workbench-page">
       {/* Header */}
