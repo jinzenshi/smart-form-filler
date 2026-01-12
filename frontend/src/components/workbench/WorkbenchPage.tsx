@@ -1131,8 +1131,8 @@ export function WorkbenchPage() {
         }
 
         .docx-preview-content {
-          width: 100%;
-          max-width: 1200px;
+          width: auto;
+          max-width: 900px;
           border: none !important;
           outline: none !important;
           display: flex;
@@ -1143,7 +1143,7 @@ export function WorkbenchPage() {
         .docx-preview-wrapper {
           border: none !important;
           outline: none !important;
-          width: 100%;
+          width: auto;
           display: flex;
           justify-content: center;
         }
