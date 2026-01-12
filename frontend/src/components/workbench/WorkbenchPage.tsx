@@ -580,7 +580,7 @@ export function WorkbenchPage() {
                   <div className="preview-placeholder">
                     <div className="placeholder-content">
                       <span className="fun-icon">📝</span>
-                      <p className="placeholder-text">点击"开始填充并预览"生成结果</p>
+                      <p className="placeholder-text">点击「开始填充并预览」生成结果</p>
                     </div>
                   </div>
                 )}
