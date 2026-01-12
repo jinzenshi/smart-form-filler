@@ -338,133 +338,184 @@ export function WorkbenchPage() {
 
       {/* Main Content */}
       <main className="main-content">
+        {/* Wizard Progress Indicator */}
+        <div className="wizard-progress">
+          <div className={`wizard-step ${currentStep >= 1 ? 'active' : ''} ${currentStep > 1 ? 'completed' : ''}`} onClick={goToStep1}>
+            <div className="wizard-step-icon">{currentStep > 1 ? '✓' : '1'}</div>
+            <span className="wizard-step-label">填写个人信息</span>
+          </div>
+          <div className={`wizard-connector ${currentStep >= 2 ? 'active' : ''}`}></div>
+          <div className={`wizard-step ${currentStep >= 2 ? 'active' : ''} ${currentStep > 2 ? 'completed' : ''}`} onClick={goToStep2}>
+            <div className="wizard-step-icon">{currentStep > 2 ? '✓' : '2'}</div>
+            <span className="wizard-step-label">上传报名表</span>
+          </div>
+          <div className={`wizard-connector ${currentStep >= 3 ? 'active' : ''}`}></div>
+          <div className={`wizard-step ${currentStep >= 3 ? 'active' : ''}`}>
+            <div className="wizard-step-icon">3</div>
+            <span className="wizard-step-label">预览结果</span>
+          </div>
+        </div>
+
         <div className="content-grid">
           {/* Left Panel - Editor */}
           <section className="panel editor-panel">
             <div className="panel-header">
               <h2>
                 <span className="panel-icon">✎</span>
-                文档编辑
+                {currentStep === 1 && '填写个人信息'}
+                {currentStep === 2 && '上传报名表'}
+                {currentStep === 3 && '预览结果'}
               </h2>
             </div>
 
             <div className="panel-body">
-              {/* Step 1: Upload Template */}
-              <div className="step-section">
-                <div className="step-header">
-                  <span className="step-number">1</span>
-                  <h3>上传 DOCX 模板</h3>
-                  <Button variant="ghost" size="sm" onClick={downloadTemplate}>
-                    下载示例模板
-                  </Button>
-                </div>
-                <div
-                  className="file-upload-area"
-                  onClick={() => docxInputRef.current?.click()}
-                >
-                  <input
-                    ref={docxInputRef}
-                    type="file"
-                    accept=".docx"
-                    onChange={handleDocxSelect}
-                  />
-                  <div className="upload-content">
-                    <span className="upload-icon">📄</span>
-                    <span className="upload-text">{docxFileName || '点击或拖拽上传模板'}</span>
-                    <span className="upload-hint">支持 .docx 格式，最大 10MB</span>
-                  </div>
-                </div>
-                {docxFileName && <p className="file-note">✓ {docxFileName}</p>}
-              </div>
-
-              {/* Step 2: Fill Info */}
-              <div className="step-section">
-                <div className="step-header">
-                  <span className="step-number">2</span>
-                  <h3>填写个人信息</h3>
-                </div>
-
-                {/* Tabs */}
-                <div className="info-tabs">
-                  <button
-                    className={`tab-btn ${infoTab === 'manual' ? 'active' : ''}`}
-                    onClick={() => setInfoTab('manual')}
-                  >
-                    手动填写
-                  </button>
-                  <button
-                    className={`tab-btn ${infoTab === 'upload' ? 'active' : ''}`}
-                    onClick={() => setInfoTab('upload')}
-                  >
-                    上传文件
-                  </button>
-                </div>
-
-                {/* Manual Input */}
-                {infoTab === 'manual' && (
-                  <div className="tab-content">
-                    <textarea
-                      value={userInfo}
-                      onChange={(e) => {
-                        setUserInfo(e.target.value)
-                        saveUserInfo()
-                      }}
-                      className="input textarea code-editor large-textarea"
-                      placeholder="# 请填写要替换的变量信息..."
-                      spellCheck={false}
-                    />
-                  </div>
-                )}
-
-                {/* Upload File */}
-                {infoTab === 'upload' && (
-                  <div className="tab-content">
-                    <div
-                      className="file-upload-area small"
-                      onClick={() => infoInputRef.current?.click()}
+              {/* Step 1: Fill Personal Info */}
+              {currentStep === 1 && (
+                <div className="wizard-content">
+                  <div className="info-tabs">
+                    <button
+                      className={`tab-btn ${infoTab === 'manual' ? 'active' : ''}`}
+                      onClick={() => setInfoTab('manual')}
                     >
-                      <input
-                        ref={infoInputRef}
-                        type="file"
-                        accept=".txt,.md,.markdown"
-                        onChange={handleInfoSelect}
+                      手动填写
+                    </button>
+                    <button
+                      className={`tab-btn ${infoTab === 'upload' ? 'active' : ''}`}
+                      onClick={() => setInfoTab('upload')}
+                    >
+                      上传文件
+                    </button>
+                  </div>
+
+                  {infoTab === 'manual' && (
+                    <div className="tab-content">
+                      <textarea
+                        value={userInfo}
+                        onChange={(e) => {
+                          setUserInfo(e.target.value)
+                          saveUserInfo()
+                        }}
+                        className="input textarea code-editor large-textarea"
+                        placeholder="# 请填写要替换的变量信息..."
+                        spellCheck={false}
                       />
-                      <div className="upload-content">
-                        <span className="upload-icon">📋</span>
-                        <span className="upload-text">{infoFileName || '点击上传个人信息文件'}</span>
-                        <span className="upload-hint">支持 .txt .md 格式</span>
+                    </div>
+                  )}
+
+                  {infoTab === 'upload' && (
+                    <div className="tab-content">
+                      <div
+                        className="file-upload-area"
+                        onClick={() => infoInputRef.current?.click()}
+                      >
+                        <input
+                          ref={infoInputRef}
+                          type="file"
+                          accept=".txt,.md,.markdown"
+                          onChange={handleInfoSelect}
+                        />
+                        <div className="upload-content">
+                          <span className="upload-icon">📋</span>
+                          <span className="upload-text">{infoFileName || '点击上传个人信息文件'}</span>
+                          <span className="upload-hint">支持 .txt .md 格式</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
 
-              {/* Actions */}
-              <div className="action-section">
-                <Button
-                  className="action-btn"
-                  disabled={!canPreview || loading}
-                  onClick={handlePreview}
-                >
-                  <span className="btn-icon">◉</span>
-                  {loading ? '处理中...' : '开始填充'}
-                </Button>
-              </div>
-
-              {/* Missing Fields Warning */}
-              {missingFields.length > 0 && (
-                <div className="missing-fields-inline">
-                  <div className="warning-header">
-                    <span className="warning-icon">⚠️</span>
-                    <span className="warning-title">以下字段可能需要补充</span>
+                  <div className="wizard-actions">
+                    <Button
+                      variant="primary"
+                      onClick={goToStep2}
+                      disabled={!canGoToStep2}
+                    >
+                      下一步：上传报名表
+                    </Button>
                   </div>
-                  <ul className="missing-fields-list">
-                    {missingFields.map((field) => (
-                      <li key={field} className="missing-field-item">
-                        {field}
-                      </li>
-                    ))}
-                  </ul>
+                </div>
+              )}
+
+              {/* Step 2: Upload Template */}
+              {currentStep === 2 && (
+                <div className="wizard-content">
+                  <div className="template-section">
+                    <div className="step-header">
+                      <h3>上传 DOCX 模板</h3>
+                      <Button variant="ghost" size="sm" onClick={downloadTemplate}>
+                        下载示例模板
+                      </Button>
+                    </div>
+                    <div
+                      className="file-upload-area"
+                      onClick={() => docxInputRef.current?.click()}
+                    >
+                      <input
+                        ref={docxInputRef}
+                        type="file"
+                        accept=".docx"
+                        onChange={handleDocxSelect}
+                      />
+                      <div className="upload-content">
+                        <span className="upload-icon">📄</span>
+                        <span className="upload-text">{docxFileName || '点击或拖拽上传模板'}</span>
+                        <span className="upload-hint">支持 .docx 格式，最大 10MB</span>
+                      </div>
+                    </div>
+                    {docxFileName && <p className="file-note">✓ {docxFileName}</p>}
+                  </div>
+
+                  <div className="wizard-actions">
+                    <Button variant="secondary" onClick={goToStep1}>
+                      上一步
+                    </Button>
+                    <Button
+                      variant="primary"
+                      onClick={goToStep3}
+                      disabled={!canGoToStep3}
+                    >
+                      下一步：预览结果
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Preview */}
+              {currentStep === 3 && (
+                <div className="wizard-content">
+                  {/* Actions */}
+                  <div className="action-section">
+                    <Button
+                      className="action-btn"
+                      disabled={!canPreview || loading}
+                      onClick={handlePreview}
+                    >
+                      <span className="btn-icon">◉</span>
+                      {loading ? '处理中...' : '开始填充并预览'}
+                    </Button>
+                  </div>
+
+                  {/* Missing Fields Warning */}
+                  {missingFields.length > 0 && (
+                    <div className="missing-fields-inline">
+                      <div className="warning-header">
+                        <span className="warning-icon">⚠️</span>
+                        <span className="warning-title">以下字段可能需要补充</span>
+                      </div>
+                      <ul className="missing-fields-list">
+                        {missingFields.map((field) => (
+                          <li key={field} className="missing-field-item">
+                            {field}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="wizard-actions">
+                    <Button variant="secondary" onClick={goToStep2}>
+                      上一步
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
