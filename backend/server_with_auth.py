@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 import json
 
 # 导入核心模块
-from core import fill_form, analyze_missing_fields
+from core import fill_form, analyze_missing_fields, audit_template
 from models import init_db, User, OperationLog, Feedback, FileStorage, SessionLocal, SimpleUser
 from auth import (
     get_db, hash_password, verify_password, create_user,
