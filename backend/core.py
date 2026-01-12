@@ -316,6 +316,7 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
 
     # 4. 收集未填充的字段信息
     missing_fields = []  # 存储未填充的字段（值为空或不存在）
+    placeholder_needs_ai_inference = {}  # 存储需要 AI 推断字段名称的占位符
 
     # 4. 填充数据
     if fill_data:
@@ -333,9 +334,26 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
                     # 使用 target_key 进行 lookup，因为 placeholder_info 的 key 格式是 {1}
                     header_info = placeholder_info.get(target_key, {})
                     header = header_info.get('header', '')
-                    field_name = header if header else target_key
-                    missing_fields.append(field_name)
-                    print(f"⚠️ 识别到缺失字段: {field_name} (占位符: {target_key})")
+                    if header:
+                        # 有表头，直接使用表头作为字段名
+                        missing_fields.append(header)
+                    else:
+                        # 没有表头，收集起来用 AI 推断
+                        placeholder_needs_ai_inference[target_key] = {
+                            "table_index": t_idx + 1,
+                            "row_index": r_idx + 1,
+                            "col_index": c_idx + 1
+                        }
+                    print(f"⚠️ 识别到缺失字段: {header if header else target_key} (占位符: {target_key})")
+
+    # 5. 如果有无表头的缺失字段，用 AI 推断字段名称
+    if placeholder_needs_ai_inference:
+        inferred_fields = infer_field_names_with_ai(
+            placeholder_needs_ai_inference,
+            "\n".join(markdown_lines),
+            user_info_text
+        )
+        missing_fields.extend(inferred_fields)
 
     print(f"📋 缺失字段列表: {missing_fields}")
 
