@@ -132,7 +132,7 @@ def analyze_missing_fields(docx_bytes, user_info_text):
             import re
             matches = re.findall(r'"([^"]+)"', content)
             if matches:
-                return matches[:5]
+                return matches
             return []
     except Exception as e:
         print(f"❌ 分析缺失字段失败: {e}")
