@@ -67,7 +67,6 @@ export function WorkbenchPage() {
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
   const [loading, setLoading] = useState(false)
   const [progressStep, setProgressStep] = useState(-1)
-  const [missingFields, setMissingFields] = useState<string[]>([])
 
   // Token 余额
   const [tokenBalance, setTokenBalance] = useState<number | null>(null)
