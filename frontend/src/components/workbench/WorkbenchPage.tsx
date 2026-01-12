@@ -575,6 +575,23 @@ export function WorkbenchPage() {
                   </div>
                 )}
               </div>
+
+              {/* Missing Fields Warning - shown as panel footer */}
+              {previewBlob && missingFields.length > 0 && (
+                <div className="panel-footer-warning">
+                  <div className="missing-fields-header">
+                    <span className="warning-icon">⚠️</span>
+                    <span className="warning-title">以下字段可能需要补充</span>
+                  </div>
+                  <ul className="missing-fields-list">
+                    {missingFields.map((field) => (
+                      <li key={field} className="missing-field-item">
+                        {field}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </section>
           )}
         </div>
