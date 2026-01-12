@@ -1153,29 +1153,33 @@ export function WorkbenchPage() {
           overflow-x: auto;
         }
 
-        /* DocxPreview component styles - centered with padding */
+        /* DocxPreview 组件外层容器 */
         .docx-preview {
           width: 100%;
           display: flex;
           flex-direction: column;
           align-items: center;
-          padding: 40px 24px;
+          padding: 30px 0;
           box-sizing: border-box;
         }
 
-        /* 强制覆盖 docx-preview 插件生成的容器 */
+        /* --- 核心修复：强制覆盖插件生成的容器样式 --- */
+
+        /* 1. 强制 wrapper 占满宽度并垂直居中其内容 */
         :global(.docx-wrapper) {
           background-color: transparent !important;
           padding: 0 !important;
+          width: 100% !important;
           display: flex !important;
-          justify-content: center !important;
+          flex-direction: column !important;
+          align-items: center !important;
         }
 
-        /* 强制让文档页面居中并显示阴影 */
-        :global(.docx-wrapper section.docx) {
-          margin: 0 auto !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-          margin-bottom: 20px !important;
+        /* 2. 强制具体的"纸张"页面居中并添加阴影 */
+        :global(.docx-wrapper > section.docx) {
+          margin: 0 auto 24px auto !important;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+          transform-origin: center top !important;
         }
 
         .docx-preview-content {
@@ -1191,16 +1195,16 @@ export function WorkbenchPage() {
         .docx-preview-wrapper {
           border: none !important;
           outline: none !important;
-          width: auto;
-          display: flex;
-          justify-content: center;
+          width: 100% !important;
+          display: flex !important;
+          flex-direction: column !important;
+          align-items: center !important;
         }
 
         .docx-preview-wrapper .docx-page {
           border: none !important;
           box-shadow: none !important;
-          padding: 0 50px !important;
-          margin: 0 auto;
+          margin: 0 auto 24px auto !important;
         }
 
         .preview-placeholder {
