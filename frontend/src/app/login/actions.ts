@@ -1,26 +1,41 @@
 'use server'
 
-import { redirect } from 'next/navigation'
-
 export async function loginAction(username: string, password: string) {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+
+  console.log('[Login] 开始登录请求:', { username, apiUrl })
 
   const formData = new URLSearchParams()
   formData.append('username', username)
   formData.append('password', password)
 
-  const response = await fetch(`${apiUrl}/api/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: formData.toString()
-  })
+  try {
+    const response = await fetch(`${apiUrl}/api/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formData.toString()
+    })
 
-  const data = await response.json()
+    console.log('[Login] 响应状态:', response.status)
 
-  if (data.success && data.token) {
-    // Return the token and username - client will store in localStorage
-    return { success: true, token: data.token, username: data.username || username }
+    // 检查 HTTP 状态码
+    if (!response.ok) {
+      return { error: `服务器错误: ${response.status}` }
+    }
+
+    const data = await response.json()
+    console.log('[Login] 响应数据:', JSON.stringify(data))
+
+    // 检查响应结构
+    if (data.success && data.token) {
+      console.log('[Login] 登录成功')
+      return { success: true, token: data.token, username: data.username || username }
+    }
+
+    console.log('[Login] 登录失败:', data.message)
+    return { error: data.message || '登录失败，请检查用户名和密码' }
+  } catch (err) {
+    console.error('[Login] 请求异常:', err)
+    return { error: err instanceof Error ? err.message : '网络请求失败' }
   }
-
-  return { error: data.message || '登录失败，请检查用户名和密码' }
 }
