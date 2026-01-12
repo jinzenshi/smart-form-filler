@@ -364,3 +364,95 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
     if return_fill_data:
         return output_bytes, fill_data, missing_fields
     return output_bytes
+
+
+def infer_field_names_with_ai(placeholder_info_map, markdown_context, user_info_text):
+    """
+    使用 AI 推断缺失字段的名称（当表头为空时）
+
+    Args:
+        placeholder_info_map: 占位符信息字典 {占位符: {table_index, row_index, col_index}}
+        markdown_context: Markdown 表格上下文
+        user_info_text: 用户已填写的信息
+
+    Returns:
+        list: 推断出的字段名称列表
+    """
+    if not placeholder_info_map:
+        return []
+
+    url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+    api_key = os.environ.get("ARK_API_KEY") or "5410d463-1115-4320-9279-a5441ce30694"
+    model_endpoint = os.environ.get("MODEL_ENDPOINT") or "doubao-seed-1-6-251015"
+
+    # 构建占位符信息
+    placeholders_text = "\n".join([
+        f"- {k}: 表格{k['table_index']}第{k['row_index']}行第{k['col_index']}列"
+        for k, v in placeholder_info_map.items()
+    ])
+
+    prompt = f"""你是一个表单字段分析助手。表格中有一些空单元格没有表头，需要你根据上下文推断这些单元格应该填写什么类型的字段。
+
+**任务：**
+分析表格结构和用户信息，推断每个空单元格应该填写什么类型的字段名称（如"身高"、"体重"、"毕业院校"等）。
+
+**表格上下文：**
+{markdown_context}
+
+**需要推断的占位符位置：**
+{placeholders_text}
+
+**用户已填写的信息：**
+{user_info_text}
+
+**返回格式：**
+请以纯 JSON 数组格式返回字段名称，顺序与占位符顺序一致，示例：
+["身高(cm)", "体重(kg)", "毕业院校"]
+
+只返回字段名称，不要其他解释。如果没有足够信息推断，可以使用通用描述如"字段"、"信息"等。"""
+
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    data = {
+        "model": model_endpoint,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "top_p": 0.7,
+        "max_tokens": 500
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code != 200:
+            # 如果 AI 调用失败，返回占位符作为默认
+            return list(placeholder_info_map.keys())
+
+        res_json = response.json()
+        content = res_json['choices'][0]['message']['content']
+
+        # 清理 Markdown 代码块标记
+        content = content.replace("```json", "").replace("```", "").strip()
+
+        # 解析 JSON 数组
+        try:
+            inferred_fields = json.loads(content)
+            if isinstance(inferred_fields, list):
+                # 确保返回数量与占位符数量一致
+                if len(inferred_fields) == len(placeholder_info_map):
+                    return inferred_fields
+                else:
+                    # 数量不匹配时，补充或截断
+                    placeholders = list(placeholder_info_map.keys())
+                    if len(inferred_fields) < len(placeholders):
+                        return inferred_fields + placeholders[len(inferred_fields):]
+                    else:
+                        return inferred_fields[:len(placeholders)]
+            return list(placeholder_info_map.keys())
+        except json.JSONDecodeError:
+            # 尝试提取数组格式
+            matches = re.findall(r'"([^"]+)"', content)
+            if matches:
+                return matches
+            return list(placeholder_info_map.keys())
+    except Exception as e:
+        print(f"❌ AI 推断字段名称失败: {e}")
+        return list(placeholder_info_map.keys())
