@@ -1132,7 +1132,7 @@ export function WorkbenchPage() {
 
         .docx-preview-content {
           width: 100%;
-          max-width: 900px;
+          max-width: 1200px;
           border: none !important;
           outline: none !important;
           display: flex;
