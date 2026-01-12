@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { getAuthData } from '@/lib/auth-client'
-import { processDocx, analyzeMissingFields, getTokenBalance, base64ToBlob } from '@/lib/docx'
+import { processDocx, getTokenBalance, base64ToBlob } from '@/lib/docx'
 import { DocxPreview } from '@/components/docx/DocxPreview'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
