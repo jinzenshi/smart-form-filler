@@ -141,7 +141,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
 
   return (
     <div className="docx-preview">
-      <div ref={containerRef} className="docx-preview-content docx-wrapper">
+      <div ref={containerRef} className="docx-preview-content">
         {renderContent()}
       </div>
     </div>
