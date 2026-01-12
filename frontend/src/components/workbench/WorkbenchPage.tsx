@@ -1121,25 +1121,38 @@ export function WorkbenchPage() {
           padding: 0;
         }
 
-        /* DocxPreview component styles - no extra borders */
+        /* DocxPreview component styles - centered with padding */
         .docx-preview {
           width: 100%;
+          display: flex;
+          justify-content: center;
+          padding: 20px 24px;
+          box-sizing: border-box;
         }
 
         .docx-preview-content {
           width: 100%;
+          max-width: 900px;
           border: none !important;
           outline: none !important;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
         }
 
         .docx-preview-wrapper {
           border: none !important;
           outline: none !important;
+          width: 100%;
+          display: flex;
+          justify-content: center;
         }
 
         .docx-preview-wrapper .docx-page {
           border: none !important;
           box-shadow: none !important;
+          padding: 0 50px !important;
+          margin: 0 auto;
         }
 
         .preview-placeholder {
