@@ -213,8 +213,18 @@ export function WorkbenchPage() {
           setPreviewBlob(base64ToBlob(response.data))
         }
 
-        if (response.missing_fields && response.missing_fields.length > 0) {
-          setMissingFields(response.missing_fields)
+        // 额外调用 AI 分析缺失字段
+        try {
+          const missingResponse = await analyzeMissingFields(templateFile, userInfo)
+          if (missingResponse.success && missingResponse.missing_fields) {
+            setMissingFields(missingResponse.missing_fields)
+          }
+        } catch (e) {
+          console.error('分析缺失字段失败:', e)
+          // 如果分析失败，使用原始的 missing_fields
+          if (response.missing_fields && response.missing_fields.length > 0) {
+            setMissingFields(response.missing_fields)
+          }
         }
       } else {
         toast.error(response.message || '处理失败')
