@@ -227,6 +227,20 @@ export function WorkbenchPage() {
     }
   }
 
+  // 从第二步直接开始预览并跳转到第三步
+  async function handlePreviewAndGoToStep3() {
+    if (!canPreview) return
+
+    // 先跳转到第三步
+    setCurrentStep(3)
+
+    // 然后开始预览处理
+    // 使用 setTimeout 确保 state 更新完成后再调用 handlePreview
+    setTimeout(() => {
+      handlePreview()
+    }, 100)
+  }
+
   // 下载文档
   async function handleDownload() {
     if (previewBlob) {
