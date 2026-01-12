@@ -292,7 +292,13 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
                     if r_idx > 0 and c_idx < len(table.rows[0].cells):
                         header_cell = table.rows[0].cells[c_idx]
                         header = header_cell.text.strip()
-                    placeholder_info[tag] = {"header": header}
+                    # 保存占位符信息，包括表头和位置
+                    placeholder_info[tag] = {
+                        "header": header,
+                        "table_index": t_idx + 1,
+                        "row_index": r_idx + 1,
+                        "col_index": c_idx + 1
+                    }
                     row_cells_content.append(tag)
                     counter += 1
                 else:
