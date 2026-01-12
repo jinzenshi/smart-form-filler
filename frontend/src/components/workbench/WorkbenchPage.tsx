@@ -950,6 +950,8 @@ export function WorkbenchPage() {
           border-radius: 12px;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           border: 1px solid #e5e5e5;
+          width: 100%;
+          box-sizing: border-box;
         }
 
         .wizard-step {
@@ -960,6 +962,8 @@ export function WorkbenchPage() {
           border-radius: 8px;
           cursor: pointer;
           transition: all 0.2s ease;
+          flex: 1;
+          justify-content: center;
         }
 
         .wizard-step:hover {
