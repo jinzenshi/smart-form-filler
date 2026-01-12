@@ -409,11 +409,10 @@ export function WorkbenchPage() {
                         setUserInfo(e.target.value)
                         saveUserInfo()
                       }}
-                      className="input textarea code-editor"
+                      className="input textarea code-editor large-textarea"
                       placeholder="# 请填写要替换的变量信息..."
                       spellCheck={false}
                     />
-                    <p className="local-save-hint">💡 个人信息会自动保存在本地</p>
                   </div>
                 )}
 
