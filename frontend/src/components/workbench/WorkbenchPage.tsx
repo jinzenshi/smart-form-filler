@@ -530,7 +530,6 @@ export function WorkbenchPage() {
               <div className="panel-header">
                 <h2>
                   <span className="panel-icon">◫</span>
-                  预览结果
                 </h2>
                 {previewBlob && (
                   <Button variant="primary" size="sm" onClick={handleDownload} disabled={loading}>
