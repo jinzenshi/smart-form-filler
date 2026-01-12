@@ -338,12 +338,14 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
                         # 有表头，直接使用表头作为字段名
                         missing_fields.append(header)
                     else:
-                        # 没有表头，收集起来用 AI 推断
-                        placeholder_needs_ai_inference[target_key] = {
-                            "table_index": t_idx + 1,
-                            "row_index": r_idx + 1,
-                            "col_index": c_idx + 1
-                        }
+                        # 没有表头，从 placeholder_info 获取位置信息
+                        if target_key in placeholder_info:
+                            pos_info = placeholder_info[target_key]
+                            placeholder_needs_ai_inference[target_key] = {
+                                "table_index": pos_info.get("table_index", 0),
+                                "row_index": pos_info.get("row_index", 0),
+                                "col_index": pos_info.get("col_index", 0)
+                            }
                     print(f"⚠️ 识别到缺失字段: {header if header else target_key} (占位符: {target_key})")
 
     # 5. 如果有无表头的缺失字段，用 AI 推断字段名称
