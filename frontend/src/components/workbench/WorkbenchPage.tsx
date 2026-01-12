@@ -504,26 +504,9 @@ export function WorkbenchPage() {
                       onClick={handlePreview}
                     >
                       <span className="btn-icon">◉</span>
-                      {loading ? '处理中...' : '开始填充并预览'}
+                      {loading ? '处理中...' : '重新生成预览'}
                     </Button>
                   </div>
-
-                  {/* Missing Fields Warning */}
-                  {missingFields.length > 0 && (
-                    <div className="missing-fields-inline">
-                      <div className="warning-header">
-                        <span className="warning-icon">⚠️</span>
-                        <span className="warning-title">以下字段可能需要补充</span>
-                      </div>
-                      <ul className="missing-fields-list">
-                        {missingFields.map((field) => (
-                          <li key={field} className="missing-field-item">
-                            {field}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
 
                   <div className="wizard-actions">
                     <Button variant="secondary" onClick={goToStep2}>
