@@ -99,7 +99,7 @@ def analyze_missing_fields(docx_bytes, user_info_text):
 请以纯 JSON 数组格式返回，示例：
 ["身高(cm)", "民族", "学历"]
 
-只返回字段名称，用中文顿号（、）分隔。最多返回 5 个最重要的缺失字段。"""
+只返回字段名称，用中文顿号（、）分隔。"""
 
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     data = {
