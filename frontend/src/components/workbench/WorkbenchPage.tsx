@@ -1149,8 +1149,8 @@ export function WorkbenchPage() {
           padding: 0;
           display: flex;
           flex-direction: column;
-          align-items: center;
           overflow-x: auto;
+          position: relative;
         }
 
         /* DocxPreview 组件外层容器 */
