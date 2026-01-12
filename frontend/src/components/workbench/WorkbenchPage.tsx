@@ -69,6 +69,12 @@ export function WorkbenchPage() {
   const [loading, setLoading] = useState(false)
   const [progressStep, setProgressStep] = useState(-1)
 
+  // 审核状态 (Step 3)
+  const [auditItems, setAuditItems] = useState<AuditItem[]>([])
+  const [auditLoading, setAuditLoading] = useState(false)
+  // 快速填充值: { key: value }
+  const [quickFillValues, setQuickFillValues] = useState<Record<string, string>>({})
+
   // Token 余额
   const [tokenBalance, setTokenBalance] = useState<number | null>(null)
 
