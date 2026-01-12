@@ -1114,6 +1114,27 @@ export function WorkbenchPage() {
           padding: 0;
         }
 
+        /* DocxPreview component styles - no extra borders */
+        .docx-preview {
+          width: 100%;
+        }
+
+        .docx-preview-content {
+          width: 100%;
+          border: none !important;
+          outline: none !important;
+        }
+
+        .docx-preview-wrapper {
+          border: none !important;
+          outline: none !important;
+        }
+
+        .docx-preview-wrapper .docx-page {
+          border: none !important;
+          box-shadow: none !important;
+        }
+
         .preview-placeholder {
           height: 100%;
           min-height: 400px;
