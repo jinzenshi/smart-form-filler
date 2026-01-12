@@ -380,16 +380,15 @@ export function WorkbenchPage() {
           {/* Left Panel - Editor (hide on step 3) */}
           {currentStep !== 3 && (
             <section className="panel editor-panel">
-            <div className="panel-header">
-              <h2>
-                <span className="panel-icon">✎</span>
-                {currentStep === 1 && '填写个人信息'}
-                {currentStep === 2 && '上传报名表'}
-                {currentStep === 3 && '预览结果'}
-              </h2>
-            </div>
+              <div className="panel-header">
+                <h2>
+                  <span className="panel-icon">✎</span>
+                  {currentStep === 1 && '填写个人信息'}
+                  {currentStep === 2 && '上传报名表'}
+                </h2>
+              </div>
 
-            <div className="panel-body">
+              <div className="panel-body">
               {/* Step 1: Fill Personal Info */}
               {currentStep === 1 && (
                 <div className="wizard-content">
