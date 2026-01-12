@@ -739,15 +739,9 @@ export function WorkbenchPage() {
 
         .content-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: 1fr;
           gap: 24px;
           align-items: start;
-        }
-
-        @media (max-width: 1024px) {
-          .content-grid {
-            grid-template-columns: 1fr;
-          }
         }
 
         .panel {
@@ -756,6 +750,7 @@ export function WorkbenchPage() {
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           border: 1px solid #e5e5e5;
           overflow: hidden;
+          width: 100%;
         }
 
         .panel-header {
