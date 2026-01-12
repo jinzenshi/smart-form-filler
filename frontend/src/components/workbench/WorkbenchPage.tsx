@@ -370,7 +370,7 @@ export function WorkbenchPage() {
             <span className="wizard-step-label">上传报名表</span>
           </div>
           <div className={`wizard-connector ${currentStep >= 3 ? 'active' : ''}`}></div>
-          <div className={`wizard-step ${currentStep >= 3 ? 'active' : ''}`}>
+          <div className={`wizard-step ${currentStep >= 3 ? 'active' : ''}`} onClick={goToStep3}>
             <div className="wizard-step-icon">3</div>
             <span className="wizard-step-label">预览结果</span>
           </div>
