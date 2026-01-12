@@ -723,17 +723,24 @@ export function WorkbenchPage() {
 
         .main-content {
           flex: 1;
-          max-width: 1400px;
+          max-width: 1200px;
           margin: 0 auto;
           padding: 24px;
           width: 100%;
+          box-sizing: border-box;
         }
 
         .content-grid {
           display: grid;
-          grid-template-columns: 420px 1fr;
+          grid-template-columns: 1fr 1fr;
           gap: 24px;
           align-items: start;
+        }
+
+        @media (max-width: 1024px) {
+          .content-grid {
+            grid-template-columns: 1fr;
+          }
         }
 
         .panel {
