@@ -115,10 +115,13 @@ def analyze_missing_fields(docx_bytes, user_info_text):
     try:
         response = requests.post(url, headers=headers, json=data)
         if response.status_code != 200:
+            print(f"❌ AI API 返回错误状态码: {response.status_code}")
             return []
 
         res_json = response.json()
         content = res_json['choices'][0]['message']['content']
+
+        print(f"📝 AI 返回内容: {content[:500]}...")
 
         # 清理 Markdown 代码块标记
         content = content.replace("```json", "").replace("```", "").strip()
@@ -127,14 +130,19 @@ def analyze_missing_fields(docx_bytes, user_info_text):
         try:
             missing_fields = json.loads(content)
             if isinstance(missing_fields, list):
+                print(f"✅ 解析到缺失字段: {missing_fields}")
                 return missing_fields
+            print(f"⚠️ 解析结果不是数组: {missing_fields}")
             return []
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as e:
+            print(f"⚠️ JSON 解析失败: {e}，尝试正则提取")
             # 尝试提取数组格式
             import re
             matches = re.findall(r'"([^"]+)"', content)
             if matches:
+                print(f"✅ 正则提取到缺失字段: {matches}")
                 return matches
+            print(f"⚠️ 正则提取失败，原始内容: {content[:200]}")
             return []
     except Exception as e:
         print(f"❌ 分析缺失字段失败: {e}")
