@@ -1165,11 +1165,12 @@ export function WorkbenchPage() {
 
         /* --- 核心修复：强制覆盖插件生成的容器样式 --- */
 
-        /* 1. 强制 wrapper 占满宽度并垂直居中其内容 */
+        /* 1. 强制 wrapper 适应内容宽度 */
         :global(.docx-wrapper) {
           background-color: transparent !important;
-          padding: 0 !important;
-          width: 100% !important;
+          padding: 20px 0 !important;
+          width: fit-content !important;
+          min-width: 100% !important;
           display: flex !important;
           flex-direction: column !important;
           align-items: center !important;
@@ -1180,6 +1181,7 @@ export function WorkbenchPage() {
           margin: 0 auto 24px auto !important;
           box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
           transform-origin: center top !important;
+          flex-shrink: 0 !important;
         }
 
         .docx-preview-content {
