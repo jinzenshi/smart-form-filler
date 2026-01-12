@@ -524,6 +524,7 @@ export function WorkbenchPage() {
               )}
             </div>
           </section>
+          )}
 
           {/* Right Panel - Preview (only show in step 3) */}
           {currentStep === 3 && (
