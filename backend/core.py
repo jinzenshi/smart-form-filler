@@ -149,6 +149,170 @@ def analyze_missing_fields(docx_bytes, user_info_text):
         return []
 
 
+def audit_template(docx_bytes, user_info_text):
+    """
+    审核模板变量与个人信息的匹配情况
+
+    Args:
+        docx_bytes: Word文档字节数据
+        user_info_text: 用户信息文本
+
+    Returns:
+        dict: {
+            "success": bool,
+            "items": [{"key": str, "label": str, "value": str, "isMatched": bool}],
+            "matched_count": int,
+            "missing_count": int
+        }
+    """
+    from docx import Document
+
+    doc = Document(io.BytesIO(docx_bytes))
+
+    # 1. 收集占位符和表头信息，构建 Markdown 表格
+    placeholder_info = {}  # {占位符: {"header": str, "table_index": int, "row_index": int, "col_index": int}}
+    markdown_lines = []
+
+    for t_idx, table in enumerate(doc.tables):
+        if not table.rows:
+            continue
+
+        markdown_lines.append(f"\n### 表格 {t_idx + 1}\n")
+
+        # 获取表头行
+        header_row = table.rows[0]
+        headers = []
+        for c_idx, cell in enumerate(header_row.cells):
+            headers.append(cell.text.strip())
+
+        # 预计算最大列数
+        max_cols = max(len(row.cells) for row in table.rows)
+
+        for r_idx, row in enumerate(table.rows):
+            row_cells_content = []
+            for c_idx in range(max_cols):
+                if c_idx >= len(row.cells):
+                    row_cells_content.append("")
+                    continue
+
+                cell = row.cells[c_idx]
+                text = cell.text.strip()
+
+                if not text:
+                    # 空单元格作为占位符
+                    tag = f"{{{len(placeholder_info) + 1}}}"
+                    # 获取表头
+                    header = headers[c_idx] if c_idx < len(headers) else ""
+                    placeholder_info[tag] = {
+                        "header": header,
+                        "table_index": t_idx + 1,
+                        "row_index": r_idx + 1,
+                        "col_index": c_idx + 1
+                    }
+                    row_cells_content.append(tag)
+                else:
+                    row_cells_content.append(text)
+
+            # 生成 Markdown 行
+            markdown_lines.append("| " + " | ".join(row_cells_content) + " |")
+            if r_idx == 0:
+                markdown_lines.append("| " + " | ".join(["---"] * max_cols) + " |")
+
+    if not placeholder_info:
+        return {"success": True, "items": [], "matched_count": 0, "missing_count": 0}
+
+    # 2. 调用 AI 分析匹配情况
+    url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+    api_key = os.environ.get("ARK_API_KEY") or "5410d463-1115-4320-9279-a5441ce30694"
+    model_endpoint = os.environ.get("MODEL_ENDPOINT") or "doubao-seed-1-6-251015"
+
+    # 构建占位符信息文本
+    placeholders_text = "\n".join([
+        f"- {k}: 表头=\"{v['header'] if v['header'] else '无'}\" (表格{v['table_index']}第{v['row_index']}行第{v['col_index']}列)"
+        for k, v in placeholder_info.items()
+    ])
+
+    prompt = f"""你是一个表单匹配审核助手。请分析以下模板表格和个人信息，检查每个占位符是否能在个人信息中找到对应值。
+
+**任务：**
+1. 从模板表格中提取所有占位符及其含义（根据表头判断）
+2. 在用户信息中搜索每个占位符对应的值
+3. 如果找到对应值，标记为匹配；如果找不到，标记为缺失
+
+**模板表格的占位符信息：**
+{placeholders_text}
+
+**Markdown表格上下文：**
+{"".join(markdown_lines)}
+
+**用户已填写的信息：**
+{user_info_text}
+
+**返回格式：**
+请以纯 JSON 格式返回，示例：
+{{
+  "items": [
+    {{"key": "{{1}}", "label": "姓名", "value": "张三", "isMatched": true}},
+    {{"key": "{{2}}", "label": "期望薪资", "value": "", "isMatched": false}}
+  ]
+}}
+
+只返回 JSON，不要其他解释。"""
+
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    data = {
+        "model": model_endpoint,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.3,
+        "top_p": 0.7,
+        "max_tokens": 2000
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        if response.status_code != 200:
+            print(f"❌ AI API 返回错误: {response.status_code}")
+            return {"success": False, "error": f"API error: {response.status_code}", "items": []}
+
+        res_json = response.json()
+        content = res_json['choices'][0]['message']['content']
+
+        # 清理 Markdown 代码块
+        content = content.replace("```json", "").replace("```", "").strip()
+
+        # 解析 JSON
+        result = json.loads(content)
+        items = result.get("items", [])
+
+        # 确保返回所有占位符（AI 可能遗漏）
+        returned_keys = {item.get("key") for item in items}
+        for tag, info in placeholder_info.items():
+            if tag not in returned_keys:
+                items.append({
+                    "key": tag,
+                    "label": info["header"] if info["header"] else tag,
+                    "value": "",
+                    "isMatched": False
+                })
+
+        matched_count = sum(1 for item in items if item.get("isMatched"))
+        missing_count = len(items) - matched_count
+
+        return {
+            "success": True,
+            "items": items,
+            "matched_count": matched_count,
+            "missing_count": missing_count
+        }
+
+    except json.JSONDecodeError as e:
+        print(f"❌ JSON 解析失败: {e}, 内容: {content[:200]}")
+        return {"success": False, "error": f"JSON parse error: {str(e)}", "items": []}
+    except Exception as e:
+        print(f"❌ 审核模板失败: {e}")
+        return {"success": False, "error": str(e), "items": []}
+
+
 def get_doubao_response(user_info, markdown_context):
     """
     参考 smart.py 的提示词思路，使用 Markdown 表格作为上下文
