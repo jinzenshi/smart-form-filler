@@ -79,6 +79,13 @@ export function WorkbenchPage() {
   // 默认模板
   const [defaultTemplateBlob, setDefaultTemplateBlob] = useState<Blob | null>(null)
 
+  // Wizard 步骤状态 (1: 填写个人信息, 2: 上传模板, 3: 预览结果)
+  const [currentStep, setCurrentStep] = useState(1)
+
+  // 是否可以进入下一步
+  const canGoToStep2 = userInfo.trim().length > 0
+  const canGoToStep3 = docxFile || defaultTemplateBlob
+
   // 是否可以预览
   const canPreview = (docxFile || defaultTemplateBlob) && (userInfo.trim() || infoFile)
 
