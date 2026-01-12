@@ -310,6 +310,12 @@ export function WorkbenchPage() {
   }
 
   function goToStep3() {
+    // 如果已经有预览结果，直接跳转到预览页面
+    if (previewBlob) {
+      setCurrentStep(3)
+      return
+    }
+    // 否则需要检查前置条件
     if (canGoToStep3 && canGoToStep2) {
       setCurrentStep(3)
     }
