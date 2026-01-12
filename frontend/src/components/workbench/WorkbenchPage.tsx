@@ -1087,6 +1087,21 @@ export function WorkbenchPage() {
           color: #f59e0b;
         }
 
+        .missing-fields-below-preview {
+          padding: 16px;
+          background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
+          border: 1px solid #fbbf24;
+          border-radius: 0 0 8px 8px;
+          border-top: none;
+        }
+
+        .missing-fields-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+
         .preview-panel .panel-body {
           min-height: 500px;
           background: #f5f5f5;
