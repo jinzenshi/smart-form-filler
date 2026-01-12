@@ -905,6 +905,7 @@ export function WorkbenchPage() {
 
         .tab-content {
           animation: fadeSlideIn 0.2s ease;
+          width: 100%;
         }
 
         @keyframes fadeSlideIn {
