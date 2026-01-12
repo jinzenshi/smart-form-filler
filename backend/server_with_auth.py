@@ -426,6 +426,39 @@ async def analyze_missing(
         print(f"❌ 分析缺失字段 API 错误: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+@app.post("/api/audit-template")
+async def audit_template_api(
+    docx: UploadFile = File(...),
+    user_info_text: str = Form(...),
+    auth_result: dict = Depends(get_optional_current_user)
+):
+    """
+    审核模板变量与个人信息的匹配情况
+    返回每个占位符的匹配状态和值
+    """
+    try:
+        docx_bytes = await docx.read()
+
+        # 调用审核函数
+        result = audit_template(docx_bytes, user_info_text)
+
+        if result.get("success"):
+            return {
+                "success": True,
+                "items": result.get("items", []),
+                "matched_count": result.get("matched_count", 0),
+                "missing_count": result.get("missing_count", 0),
+                "message": f"已匹配 {result.get('matched_count', 0)} 个字段，{result.get('missing_count', 0)} 个字段缺失"
+            }
+        else:
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error": result.get("error", "Unknown error")}
+            )
+    except Exception as e:
+        print(f"❌ 审核模板 API 错误: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 @app.get("/api/admin/users")
 async def get_users(
     db: Session = Depends(get_db),
