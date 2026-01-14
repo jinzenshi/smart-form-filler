@@ -504,7 +504,55 @@ export function WorkbenchPage() {
                   </div>
                 )}
 
-                {/* Step 3: Preview */}
+                {/* Step 3: Supplement Missing Info */}
+                {currentStep === 3 && (
+                  <div className="wizard-content">
+                    <div className="supplement-section">
+                      <div className="supplement-header">
+                        <h3>补充缺失信息</h3>
+                      </div>
+                      <div className="supplement-hint">
+                        <span className="hint-icon">💡</span>
+                        <p>以下字段未能从您的个人信息中自动匹配，请补充：</p>
+                      </div>
+
+                      {missingFields.length > 0 ? (
+                        <div className="supplement-form">
+                          <textarea
+                            value={supplementaryInfo}
+                            onChange={(e) => setSupplementaryInfo(e.target.value)}
+                            className="input textarea code-editor large-textarea"
+                            placeholder={generateMissingFieldsPlaceholder()}
+                            spellCheck={false}
+                          />
+                          <p className="form-hint">
+                            请按照「字段: 内容」的格式填写，例如：身高: 175cm
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="no-missing-fields">
+                          <span className="success-icon">✓</span>
+                          <p>所有字段都已匹配，无需补充信息</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="wizard-actions">
+                      <Button variant="secondary" onClick={goToStep2}>
+                        上一步
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={handleConfirmSupplement}
+                        disabled={loading || (missingFields.length > 0 && !supplementaryInfo.trim())}
+                      >
+                        {loading ? '处理中...' : '确认补充并生成预览'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 4: Preview */}
                 {currentStep === 3 && (
                   <div className="wizard-content">
                     {/* Actions */}
