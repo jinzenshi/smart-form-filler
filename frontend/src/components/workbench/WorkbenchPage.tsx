@@ -389,6 +389,7 @@ export function WorkbenchPage() {
                   <span className="panel-icon">✎</span>
                   {currentStep === 1 && '填写个人信息'}
                   {currentStep === 2 && '上传报名表'}
+                  {currentStep === 3 && '补充信息'}
                 </h2>
               </div>
 
