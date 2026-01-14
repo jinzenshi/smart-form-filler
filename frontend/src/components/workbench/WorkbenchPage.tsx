@@ -1151,6 +1151,79 @@ export function WorkbenchPage() {
           margin-bottom: 20px;
         }
 
+        /* Step 3: Supplement Section */
+        .supplement-section {
+          animation: fadeSlideIn 0.2s ease;
+        }
+
+        .supplement-header {
+          margin-bottom: 16px;
+        }
+
+        .supplement-header h3 {
+          font-size: 22px;
+          font-weight: 600;
+          margin: 0;
+          color: #1a1a1a;
+        }
+
+        .supplement-hint {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          padding: 14px 16px;
+          background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
+          border: 1px solid #fbbf24;
+          border-radius: 8px;
+          margin-bottom: 20px;
+        }
+
+        .hint-icon {
+          font-size: 18px;
+          flex-shrink: 0;
+        }
+
+        .supplement-hint p {
+          margin: 0;
+          font-size: 14px;
+          color: #92400e;
+          line-height: 1.5;
+        }
+
+        .supplement-form {
+          margin-bottom: 16px;
+        }
+
+        .form-hint {
+          font-size: 13px;
+          color: #9ca3af;
+          margin-top: 8px;
+        }
+
+        .no-missing-fields {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          padding: 30px;
+          background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+          border: 1px solid #10b981;
+          border-radius: 8px;
+          margin-bottom: 20px;
+        }
+
+        .success-icon {
+          font-size: 20px;
+          color: #10b981;
+        }
+
+        .no-missing-fields p {
+          margin: 0;
+          font-size: 15px;
+          color: #059669;
+          font-weight: 500;
+        }
+
         .action-section {
           display: flex;
           gap: 16px;
