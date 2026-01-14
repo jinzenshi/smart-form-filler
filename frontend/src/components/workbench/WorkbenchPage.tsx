@@ -381,8 +381,8 @@ export function WorkbenchPage() {
         </div>
 
         <div className="content-grid">
-          {/* Left Panel - Editor (hide on step 3) */}
-          {currentStep !== 3 && (
+          {/* Left Panel - Editor (hide on step 4) */}
+          {currentStep !== 4 && (
             <section className="panel editor-panel">
               <div className="panel-header">
                 <h2>
