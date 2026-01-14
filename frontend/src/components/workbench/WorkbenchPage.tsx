@@ -578,8 +578,8 @@ export function WorkbenchPage() {
             </section>
           )}
 
-          {/* Right Panel - Preview (only show in step 3) */}
-          {currentStep === 3 && (
+          {/* Right Panel - Preview (only show in step 4) */}
+          {currentStep === 4 && (
             <section className="panel preview-panel">
               <div className="panel-header">
                 <h2>
