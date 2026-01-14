@@ -299,6 +299,8 @@ export function WorkbenchPage() {
   function goToStep1() {
     setCurrentStep(1)
     setPreviewBlob(null)
+    setMissingFields([])
+    setSupplementaryInfo('')
   }
 
   function goToStep2() {
@@ -309,14 +311,21 @@ export function WorkbenchPage() {
   }
 
   function goToStep3() {
+    // 只有存在缺失字段时才允许跳转到 Step 3
+    if (missingFields.length > 0) {
+      setCurrentStep(3)
+    }
+  }
+
+  function goToStep4() {
     // 如果已经有预览结果，直接跳转到预览页面
     if (previewBlob) {
-      setCurrentStep(3)
+      setCurrentStep(4)
       return
     }
     // 否则需要检查前置条件
     if (canGoToStep3 && canGoToStep2) {
-      setCurrentStep(3)
+      setCurrentStep(4)
     }
   }
 
