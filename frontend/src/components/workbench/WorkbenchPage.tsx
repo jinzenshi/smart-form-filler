@@ -553,7 +553,7 @@ export function WorkbenchPage() {
                 )}
 
                 {/* Step 4: Preview */}
-                {currentStep === 3 && (
+                {currentStep === 4 && (
                   <div className="wizard-content">
                     {/* Actions */}
                     <div className="action-section">
