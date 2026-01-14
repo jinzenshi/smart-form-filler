@@ -369,8 +369,13 @@ export function WorkbenchPage() {
             <span className="wizard-step-label">上传报名表</span>
           </div>
           <div className={`wizard-connector ${currentStep >= 3 ? 'active' : ''}`}></div>
-          <div className={`wizard-step ${currentStep >= 3 ? 'active' : ''}`} onClick={goToStep3}>
-            <div className="wizard-step-icon">3</div>
+          <div className={`wizard-step ${currentStep >= 3 ? 'active' : ''} ${currentStep > 3 ? 'completed' : ''}`} onClick={missingFields.length > 0 ? goToStep3 : undefined}>
+            <div className="wizard-step-icon">{currentStep > 3 ? '✓' : '3'}</div>
+            <span className="wizard-step-label">补充信息</span>
+          </div>
+          <div className={`wizard-connector ${currentStep >= 4 ? 'active' : ''}`}></div>
+          <div className={`wizard-step ${currentStep >= 4 ? 'active' : ''}`} onClick={goToStep4}>
+            <div className="wizard-step-icon">4</div>
             <span className="wizard-step-label">预览结果</span>
           </div>
         </div>
