@@ -226,18 +226,82 @@ export function WorkbenchPage() {
     }
   }
 
-  // 从第二步直接开始预览并跳转到第三步
-  async function handlePreviewAndGoToStep3() {
+  // 生成缺失字段的 placeholder 提示
+  function generateMissingFieldsPlaceholder(): string {
+    if (missingFields.length === 0) return ''
+    return missingFields.map(field => `${field}: `).join('\n')
+  }
+
+  // 从第二步开始填充，分析缺失字段并跳转到第三步
+  async function handleStartFill() {
     if (!canPreview) return
 
-    // 先跳转到第三步
-    setCurrentStep(3)
+    setAnalyzeLoading(true)
+    try {
+      const templateFile = docxFile || new File([defaultTemplateBlob!], '模板.docx', {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      })
 
-    // 然后开始预览处理
-    // 使用 setTimeout 确保 state 更新完成后再调用 handlePreview
-    setTimeout(() => {
-      handlePreview()
-    }, 100)
+      // 调用分析接口获取缺失字段
+      const response = await analyzeMissingFields(templateFile, userInfo)
+
+      if (response.success && response.missing_fields && response.missing_fields.length > 0) {
+        // 有缺失字段，跳转到 Step 3
+        setMissingFields(response.missing_fields)
+        setSupplementaryInfo('')
+        setCurrentStep(3)
+      } else {
+        // 无缺失字段，直接生成预览并跳转到 Step 4
+        await handlePreview()
+      }
+    } catch (e: any) {
+      toast.error(e.message || '分析失败，请重试')
+    } finally {
+      setAnalyzeLoading(false)
+    }
+  }
+
+  // 确认补充信息后生成预览
+  async function handleConfirmSupplement() {
+    setLoading(true)
+    setProgressStep(0)
+
+    try {
+      // 模拟进度步骤
+      await new Promise(resolve => setTimeout(resolve, 500))
+      setProgressStep(1)
+      await new Promise(resolve => setTimeout(resolve, 500))
+      setProgressStep(2)
+
+      // 合并用户信息和补充信息
+      const mergedUserInfo = supplementaryInfo.trim()
+        ? `${userInfo}\n\n## 补充信息\n${supplementaryInfo}`
+        : userInfo
+
+      const templateFile = docxFile || new File([defaultTemplateBlob!], '模板.docx', {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      })
+
+      const response = await processDocx(templateFile, mergedUserInfo, true)
+
+      if (response.success) {
+        setProgressStep(3)
+        await new Promise(resolve => setTimeout(resolve, 300))
+
+        if (response.data) {
+          setPreviewBlob(base64ToBlob(response.data))
+          setMissingFields([])  // 清空缺失字段
+          setCurrentStep(4)  // 跳转到 Step 4
+        }
+      } else {
+        toast.error(response.message || '处理失败')
+      }
+    } catch (e: any) {
+      toast.error(e.message || '网络错误，请重试')
+    } finally {
+      setLoading(false)
+      setProgressStep(-1)
+    }
   }
 
   // 下载文档
