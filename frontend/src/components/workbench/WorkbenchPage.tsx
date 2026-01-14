@@ -495,10 +495,10 @@ export function WorkbenchPage() {
                       </Button>
                       <Button
                         variant="primary"
-                        onClick={handlePreviewAndGoToStep3}
-                        disabled={!canPreview || loading}
+                        onClick={handleStartFill}
+                        disabled={!canPreview || loading || analyzeLoading}
                       >
-                        {loading ? '处理中...' : '开始填充并预览'}
+                        {analyzeLoading ? '分析中...' : loading ? '处理中...' : '开始填充并预览'}
                       </Button>
                     </div>
                   </div>
