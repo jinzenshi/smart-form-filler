@@ -21,7 +21,7 @@ class FormFiller:
     """智能表单填写器"""
 
     def __init__(self):
-        self.api_key = os.environ.get("MODELSCOPE_API_KEY") or "ms-0f5e7360-cff3-404c-aab1-de6a8201ecad"
+        self.api_key = os.environ.get("MODELSCOPE_API_KEY", "")
         self.model_endpoint = os.environ.get("MODEL_ENDPOINT") or "deepseek-ai/DeepSeek-V3.2"
         self.url = "https://api-inference.modelscope.cn/v1/chat/completions"
 
@@ -91,6 +91,10 @@ class FormFiller:
 
     def call_ai_to_fill(self, user_info: str, markdown_content: str) -> Dict[str, str]:
         """调用AI分析占位符并返回填充数据"""
+        if not self.api_key:
+            print("❌ MODELSCOPE_API_KEY 未配置")
+            return {}
+
         print(f"\n🔑 API Key: {self.api_key[:10]}...")
         print(f"🤖 Model: {self.model_endpoint}")
         print(f"📝 User Info Length: {len(user_info)}")
