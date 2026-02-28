@@ -27,10 +27,24 @@ PROFILE_FIELD_ALIASES = {
     "紧急联系人电话": ["紧急联系人手机号", "紧急联系电话", "emergencyphone"],
 }
 
+PROFILE_KEY_NOISE_TOKENS = [
+    "必填",
+    "选填",
+    "必选",
+    "可选",
+    "required",
+    "optional",
+    "请填写",
+    "请输入",
+]
+
 
 def _normalize_profile_key(key):
     cleaned = re.sub(r"[\s_\-（）()【】\[\]·.]+", "", key or "")
-    return cleaned.lower()
+    cleaned = cleaned.lower()
+    for token in PROFILE_KEY_NOISE_TOKENS:
+        cleaned = cleaned.replace(token, "")
+    return cleaned.strip()
 
 
 def build_profile_reuse_context(user_info_text):
@@ -43,15 +57,21 @@ def build_profile_reuse_context(user_info_text):
     parsed_fields = {}
     for raw_line in user_info_text.splitlines():
         line = raw_line.strip()
-        if not line or ("：" not in line and ":" not in line):
+        if not line:
             continue
 
-        parts = re.split(r"[：:]", line, maxsplit=1)
+        line = re.sub(r"^[-*•·]+\s*", "", line)
+        line = re.sub(r"^\d+[.)、]\s*", "", line)
+
+        if not re.search(r"[：:=]", line):
+            continue
+
+        parts = re.split(r"[：:=]", line, maxsplit=1)
         if len(parts) != 2:
             continue
 
         key = parts[0].strip()
-        value = parts[1].strip()
+        value = parts[1].strip().strip('"\'')
         if not key or not value:
             continue
 
