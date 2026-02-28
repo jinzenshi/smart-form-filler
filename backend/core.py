@@ -8,6 +8,80 @@ from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Cm
 
+PROFILE_FIELD_ALIASES = {
+    "姓名": ["名字", "姓名（中文）", "姓名(中文)", "name"],
+    "性别": ["gender"],
+    "出生日期": ["生日", "出生年月", "出生时间", "birth", "dateofbirth"],
+    "身份证号": ["身份证", "身份证号码", "证件号码", "id", "idcard"],
+    "手机号码": ["手机号", "手机", "电话", "联系电话", "联系方式", "mobile", "phone"],
+    "电子邮箱": ["邮箱", "邮件", "email", "e-mail"],
+    "毕业院校": ["毕业学校", "学校", "院校", "高校", "university", "college"],
+    "学历": ["教育程度", "education", "degree"],
+    "专业": ["所学专业", "major"],
+    "毕业时间": ["毕业日期", "graduation", "graduationdate"],
+    "应聘岗位": ["应聘职位", "求职岗位", "职位", "岗位", "position", "jobtitle"],
+    "期望城市": ["意向城市", "目标城市", "求职城市", "expectedcity"],
+    "现居住地": ["现居", "居住地", "居住地址", "地址", "address", "location"],
+    "政治面貌": ["政治身份"],
+    "紧急联系人": ["联系人", "紧急联络人", "emergencycontact"],
+    "紧急联系人电话": ["紧急联系人手机号", "紧急联系电话", "emergencyphone"],
+}
+
+
+def _normalize_profile_key(key):
+    cleaned = re.sub(r"[\s_\-（）()【】\[\]·.]+", "", key or "")
+    return cleaned.lower()
+
+
+def build_profile_reuse_context(user_info_text):
+    if not user_info_text:
+        return user_info_text
+
+    if "## 标准化资料映射（系统自动生成，用于跨模板复用）" in user_info_text:
+        return user_info_text
+
+    parsed_fields = {}
+    for raw_line in user_info_text.splitlines():
+        line = raw_line.strip()
+        if not line or ("：" not in line and ":" not in line):
+            continue
+
+        parts = re.split(r"[：:]", line, maxsplit=1)
+        if len(parts) != 2:
+            continue
+
+        key = parts[0].strip()
+        value = parts[1].strip()
+        if not key or not value:
+            continue
+
+        normalized_key = _normalize_profile_key(key)
+        if normalized_key and normalized_key not in parsed_fields:
+            parsed_fields[normalized_key] = value
+
+    if not parsed_fields:
+        return user_info_text
+
+    canonical_pairs = []
+    for canonical, aliases in PROFILE_FIELD_ALIASES.items():
+        candidates = [canonical] + aliases
+        matched_value = None
+        for candidate in candidates:
+            candidate_key = _normalize_profile_key(candidate)
+            if candidate_key in parsed_fields:
+                matched_value = parsed_fields[candidate_key]
+                break
+
+        if matched_value:
+            canonical_pairs.append((canonical, matched_value))
+
+    if not canonical_pairs:
+        return user_info_text
+
+    augmented_lines = ["", "## 标准化资料映射（系统自动生成，用于跨模板复用）"]
+    augmented_lines.extend([f"{k}：{v}" for k, v in canonical_pairs])
+    return user_info_text.rstrip() + "\n" + "\n".join(augmented_lines)
+
 def analyze_missing_fields(docx_bytes, user_info_text):
     """
     分析模板和个人信息，返回可能缺失的字段列表
@@ -22,6 +96,7 @@ def analyze_missing_fields(docx_bytes, user_info_text):
     from docx import Document
 
     doc = Document(io.BytesIO(docx_bytes))
+    normalized_user_info_text = build_profile_reuse_context(user_info_text)
 
     # 1. 收集表格的表头和占位符信息
     placeholder_info = {}  # {占位符: 表格位置描述}
@@ -95,7 +170,7 @@ def analyze_missing_fields(docx_bytes, user_info_text):
 {placeholders_text}
 
 **用户已填写的信息：**
-{user_info_text}
+{normalized_user_info_text}
 
 **返回格式：**
 请以纯 JSON 数组格式返回，只列出缺失的字段名称，示例：
@@ -168,6 +243,7 @@ def audit_template(docx_bytes, user_info_text):
     from docx import Document
 
     doc = Document(io.BytesIO(docx_bytes))
+    normalized_user_info_text = build_profile_reuse_context(user_info_text)
 
     # 1. 收集占位符和表头信息，构建 Markdown 表格
     placeholder_info = {}  # {占位符: {"header": str, "table_index": int, "row_index": int, "col_index": int}}
@@ -246,7 +322,7 @@ def audit_template(docx_bytes, user_info_text):
 {"".join(markdown_lines)}
 
 **用户已填写的信息：**
-{user_info_text}
+{normalized_user_info_text}
 
 **返回格式：**
 请以纯 JSON 格式返回，示例：
@@ -425,6 +501,7 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
         否则返回 output_bytes
     """
     doc = Document(io.BytesIO(docx_bytes))
+    normalized_user_info_text = build_profile_reuse_context(user_info_text)
 
     # 1. 处理照片占位符
     photo_coords = []
@@ -508,7 +585,7 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
         return output_bytes
 
     # 3. 调用 AI 进行推理
-    fill_data = get_modelscope_response(user_info_text, "\n".join(markdown_lines))
+    fill_data = get_modelscope_response(normalized_user_info_text, "\n".join(markdown_lines))
 
     # 4. 收集未填充的字段信息
     missing_fields = []  # 存储未填充的字段（值为空或不存在）
@@ -549,7 +626,7 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
         inferred_fields = infer_field_names_with_ai(
             placeholder_needs_ai_inference,
             "\n".join(markdown_lines),
-            user_info_text
+            normalized_user_info_text
         )
         missing_fields.extend(inferred_fields)
 
