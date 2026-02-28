@@ -47,15 +47,9 @@ def _normalize_profile_key(key):
     return cleaned.strip()
 
 
-def build_profile_reuse_context(user_info_text):
-    if not user_info_text:
-        return user_info_text
-
-    if "## 标准化资料映射（系统自动生成，用于跨模板复用）" in user_info_text:
-        return user_info_text
-
+def _extract_profile_pairs(user_info_text):
     parsed_fields = {}
-    for raw_line in user_info_text.splitlines():
+    for raw_line in (user_info_text or "").splitlines():
         line = raw_line.strip()
         if not line:
             continue
@@ -79,6 +73,47 @@ def build_profile_reuse_context(user_info_text):
         if normalized_key and normalized_key not in parsed_fields:
             parsed_fields[normalized_key] = value
 
+    return parsed_fields
+
+
+def _collect_explicit_profile_values(user_info_text):
+    explicit_values = set()
+    for value in _extract_profile_pairs(user_info_text).values():
+        normalized_value = re.sub(r"\s+", "", str(value or ""))
+        if normalized_value:
+            explicit_values.add(normalized_value)
+    return explicit_values
+
+
+def _is_explicit_value(value, explicit_values):
+    normalized_value = re.sub(r"\s+", "", str(value or "")).strip()
+    if not normalized_value:
+        return False
+
+    if normalized_value in explicit_values:
+        return True
+
+    # 允许短语包含关系（例如 "上海" vs "上海市浦东新区"）
+    if len(normalized_value) <= 1:
+        return False
+
+    for explicit in explicit_values:
+        if len(explicit) <= 1:
+            continue
+        if normalized_value in explicit or explicit in normalized_value:
+            return True
+
+    return False
+
+
+def build_profile_reuse_context(user_info_text):
+    if not user_info_text:
+        return user_info_text
+
+    if "## 标准化资料映射（系统自动生成，用于跨模板复用）" in user_info_text:
+        return user_info_text
+
+    parsed_fields = _extract_profile_pairs(user_info_text)
     if not parsed_fields:
         return user_info_text
 
@@ -522,6 +557,7 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
     """
     doc = Document(io.BytesIO(docx_bytes))
     normalized_user_info_text = build_profile_reuse_context(user_info_text)
+    explicit_profile_values = _collect_explicit_profile_values(normalized_user_info_text)
 
     # 1. 处理照片占位符
     photo_coords = []
@@ -618,12 +654,19 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
             target_key = key if key.startswith("{") else f"{{{key}}}"
             if target_key in placeholder_map:
                 cell = placeholder_map[target_key]
-                cell.text = str(value)
+
+                normalized_value = "" if value is None else str(value).strip()
+                if normalized_value and not _is_explicit_value(normalized_value, explicit_profile_values):
+                    print(f"⚠️ 低置信度值已清空: {target_key} -> {normalized_value}")
+                    normalized_value = ""
+
+                fill_data[target_key] = normalized_value
+                cell.text = normalized_value
                 for p in cell.paragraphs:
                     p.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
                 # 检查是否为空值
-                if not str(value).strip():
+                if not normalized_value:
                     # 使用 target_key 进行 lookup，因为 placeholder_info 的 key 格式是 {1}
                     header_info = placeholder_info.get(target_key, {})
                     header = header_info.get('header', '')
