@@ -540,7 +540,7 @@ def get_modelscope_response(user_info, markdown_context):
         print(f"❌ Error during AI inference: {e}")
         return {}
 
-def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
+def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, prefilled_data=None):
     """
     填充表单
 
@@ -549,6 +549,7 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
         user_info_text: 用户信息文本
         photo_bytes: 照片字节数据
         return_fill_data: 是否返回填充数据（用于减少重复推理）
+        prefilled_data: 可选，直接使用预览阶段返回的填充数据，避免重复 AI 推理
 
     Returns:
         如果 return_fill_data=True，返回 (output_bytes, fill_data, missing_fields)
@@ -640,8 +641,11 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
             return output_bytes, {}, []
         return output_bytes
 
-    # 3. 调用 AI 进行推理
-    fill_data = get_modelscope_response(normalized_user_info_text, "\n".join(markdown_lines))
+    # 3. 获取填充数据（优先使用预览阶段传回的数据，避免重复 AI 推理）
+    if prefilled_data is not None:
+        fill_data = prefilled_data
+    else:
+        fill_data = get_modelscope_response(normalized_user_info_text, "\n".join(markdown_lines))
 
     # 4. 收集未填充的字段信息
     missing_fields = []  # 存储未填充的字段（值为空或不存在）

@@ -362,13 +362,19 @@ async def process(
                 "message": message
             }
         else:
-            # 下载模式：如果有 fill_data，使用它；否则重新调用 AI
+            # 下载模式：如果有 fill_data，直接复用预览结果，避免重复 AI 推理
             if fill_data and fill_data.strip():
-                # 使用预览时的 fill_data，避免重复推理
-                print(f"📝 使用预览时的 fill_data 填充文档")
-                # TODO: 这里需要修改 fill_form 以支持传入 fill_data
-                # 目前还是重新调用，但逻辑已准备好
-                output_bytes = fill_form(docx_bytes, user_info_text, None)
+                try:
+                    prefilled_data = json.loads(fill_data)
+                    if isinstance(prefilled_data, dict):
+                        print("📝 使用预览阶段 fill_data 直接填充文档（跳过 AI 推理）")
+                        output_bytes = fill_form(docx_bytes, user_info_text, None, prefilled_data=prefilled_data)
+                    else:
+                        print("⚠️ fill_data 不是字典，回退到 AI 推理")
+                        output_bytes = fill_form(docx_bytes, user_info_text, None)
+                except Exception as parse_error:
+                    print(f"⚠️ fill_data 解析失败，回退到 AI 推理: {parse_error}")
+                    output_bytes = fill_form(docx_bytes, user_info_text, None)
             else:
                 # 没有 fill_data，调用 AI 推理
                 output_bytes = fill_form(docx_bytes, user_info_text, None)
