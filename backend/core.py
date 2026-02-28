@@ -325,14 +325,14 @@ def get_modelscope_response(user_info, markdown_context):
     model_endpoint = os.environ.get("MODEL_ENDPOINT") or "deepseek-ai/DeepSeek-V3.2"
 
     # 参考 smart.py 的提示词构建方式
-    prompt = f"""你是一个专业的占位符替换助手。请分析以下 Markdown 表格和个人信息，推断每个占位符应该替换成什么内容。
+    prompt = f"""你是一个专业的占位符替换助手。请分析以下 Markdown 表格和个人信息，输出每个占位符应填内容。
 
 **任务要求：**
-1. 仔细分析表格中的占位符格式（如 {{1}}、{{2}} 等）。
-2. 根据【个人信息】推理每个占位符应该填入的内容，允许合理推理和推断。
-3. 如果无法确定某个占位符的内容，返回空字符串。
+1. 仅基于【个人信息】中明确出现的内容进行填写，不得编造、不得脑补。
+2. 仔细分析表格中的占位符格式（如 {{1}}、{{2}} 等），以及其所在行列上下文。
+3. 如果无法确定某个占位符的内容，必须返回空字符串 ""。
 4. 返回格式必须是纯 JSON，格式为：{{"{{1}}": "内容", "{{2}}": "内容"}}。
-5. 文字过长请注意换行来让排版更美观。
+5. 返回值必须是简洁字段值，不要输出解释句、原因或多余前后缀。
 
 **个人信息：**
 {user_info}
@@ -348,8 +348,8 @@ def get_modelscope_response(user_info, markdown_context):
     data = {
         "model": model_endpoint, 
         "messages": [{"role": "user", "content": prompt}], 
-        "temperature": 1, 
-        "top_p": 0.7,
+        "temperature": 0.2,
+        "top_p": 0.3,
         "extra_body": {"enable_thinking": True}
     }
 
@@ -386,9 +386,25 @@ def get_modelscope_response(user_info, markdown_context):
                     print("❌ 所有 JSON 解析方法都失败")
                     fill_data = {}
 
+        # 结果归一化：仅保留占位符键，并清理疑似解释性文本
+        normalized_fill_data = {}
+        for key, value in (fill_data or {}).items():
+            if not isinstance(key, str):
+                continue
+
+            normalized_key = key if key.startswith("{") else f"{{{key}}}"
+            if not re.match(r"^\{\d+\}$", normalized_key):
+                continue
+
+            normalized_value = "" if value is None else str(value).strip()
+            if any(token in normalized_value for token in ["无法确定", "未提供", "未知", "根据提供信息", "推断"]):
+                normalized_value = ""
+
+            normalized_fill_data[normalized_key] = normalized_value
+
         # 打印 fill_data 供 server_with_auth.py 记录
-        print(f"📋 AI 生成的填充数据: {fill_data}")
-        return fill_data
+        print(f"📋 AI 生成的填充数据: {normalized_fill_data}")
+        return normalized_fill_data
     except Exception as e:
         print(f"❌ Error during AI inference: {e}")
         return {}

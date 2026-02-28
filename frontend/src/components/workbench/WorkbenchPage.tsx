@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { getAuthData } from '@/lib/auth-client'
 import { processDocx, analyzeMissingFields, getTokenBalance, base64ToBlob } from '@/lib/docx'
-import { DocxPreview } from '@/components/docx/DocxPreview'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/common/Toast'
@@ -40,6 +40,21 @@ const DEFAULT_USER_INFO = `姓名：张*
 ## 家庭主要成员
 1. 姓名：张华  关系：父亲  工作单位：长沙某中学 教师
 2. 姓名：李芳  关系：母亲  工作单位：长沙某医院 护士`
+
+const LazyDocxPreview = dynamic(
+  () => import('@/components/docx/DocxPreview').then((mod) => mod.DocxPreview),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="preview-placeholder">
+        <div className="placeholder-content">
+          <span className="fun-icon">📝</span>
+          <p className="placeholder-text">正在加载预览组件...</p>
+        </div>
+      </div>
+    )
+  }
+)
 
 export function WorkbenchPage() {
   const router = useRouter()
@@ -106,9 +121,6 @@ export function WorkbenchPage() {
       return
     }
 
-    // 加载默认模板
-    loadDefaultTemplate()
-
     // 加载 Token 余额
     loadTokenBalance()
 
@@ -116,16 +128,24 @@ export function WorkbenchPage() {
     loadUserInfo()
   }, [router, token])
 
+  useEffect(() => {
+    if (currentStep === 2 && !defaultTemplateBlob) {
+      loadDefaultTemplate()
+    }
+  }, [currentStep, defaultTemplateBlob])
+
   // 加载默认模板
-  async function loadDefaultTemplate() {
+  async function loadDefaultTemplate(): Promise<Blob | null> {
     try {
       const response = await fetch(DEFAULT_TEMPLATE_URL)
-      if (response.ok) {
-        const blob = await response.blob()
-        setDefaultTemplateBlob(blob)
-      }
+      if (!response.ok) return null
+
+      const blob = await response.blob()
+      setDefaultTemplateBlob(blob)
+      return blob
     } catch (e) {
       console.log('未找到内置模板文件')
+      return null
     }
   }
 
@@ -177,8 +197,13 @@ export function WorkbenchPage() {
 
   // 下载默认模板
   async function downloadTemplate() {
-    if (defaultTemplateBlob) {
-      const url = URL.createObjectURL(defaultTemplateBlob)
+    let blob = defaultTemplateBlob
+    if (!blob) {
+      blob = await loadDefaultTemplate()
+    }
+
+    if (blob) {
+      const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
       a.download = '报名表模板.docx'
@@ -196,22 +221,17 @@ export function WorkbenchPage() {
     setProgressStep(0)
 
     try {
-      // 模拟进度步骤
-      await new Promise(resolve => setTimeout(resolve, 500))
       setProgressStep(1)
-      await new Promise(resolve => setTimeout(resolve, 500))
-      setProgressStep(2)
 
       const templateFile = docxFile || new File([defaultTemplateBlob!], '模板.docx', {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       })
 
+      setProgressStep(2)
       const response = await processDocx(templateFile, userInfo, true)
 
       if (response.success) {
         setProgressStep(3)
-        await new Promise(resolve => setTimeout(resolve, 300))
-
         if (response.data) {
           setPreviewBlob(base64ToBlob(response.data))
         }
@@ -267,11 +287,7 @@ export function WorkbenchPage() {
     setProgressStep(0)
 
     try {
-      // 模拟进度步骤
-      await new Promise(resolve => setTimeout(resolve, 500))
       setProgressStep(1)
-      await new Promise(resolve => setTimeout(resolve, 500))
-      setProgressStep(2)
 
       // 合并用户信息和补充信息
       const mergedUserInfo = supplementaryInfo.trim()
@@ -282,12 +298,11 @@ export function WorkbenchPage() {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       })
 
+      setProgressStep(2)
       const response = await processDocx(templateFile, mergedUserInfo, true)
 
       if (response.success) {
         setProgressStep(3)
-        await new Promise(resolve => setTimeout(resolve, 300))
-
         if (response.data) {
           setPreviewBlob(base64ToBlob(response.data))
           setMissingFields([])  // 清空缺失字段
@@ -687,7 +702,7 @@ export function WorkbenchPage() {
 
                 {/* Preview */}
                 {previewBlob ? (
-                  <DocxPreview
+                  <LazyDocxPreview
                     blob={previewBlob}
                     onRendered={() => { }}
                     onError={(msg) => toast.error(msg)}
@@ -1534,13 +1549,88 @@ export function WorkbenchPage() {
 
         @media (max-width: 768px) {
           .header-content {
-            flex-direction: column;
-            gap: 16px;
-            padding: 16px;
+            gap: 12px;
+            padding: 12px;
+          }
+
+          .header-right {
+            width: 100%;
+            justify-content: space-between;
+            gap: 8px;
+          }
+
+          .user-info {
+            min-width: 0;
+            gap: 8px;
+          }
+
+          .user-name {
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
           }
 
           .main-content {
-            padding: 16px;
+            padding: 10px;
+          }
+
+          .wizard-progress {
+            padding: 10px;
+            gap: 6px;
+            overflow-x: auto;
+            justify-content: flex-start;
+            scrollbar-width: thin;
+          }
+
+          .wizard-step {
+            min-width: 110px;
+            padding: 8px;
+            flex: 0 0 auto;
+            gap: 6px;
+          }
+
+          .wizard-step-label {
+            font-size: 12px;
+            white-space: normal;
+            line-height: 1.2;
+            text-align: center;
+          }
+
+          .wizard-connector {
+            width: 24px;
+          }
+
+          .panel-header,
+          .panel-body {
+            padding: 14px;
+          }
+
+          .panel-header h2 {
+            font-size: 16px;
+          }
+
+          .step-header h3,
+          .supplement-header h3 {
+            font-size: 18px;
+          }
+
+          .large-textarea {
+            min-height: 280px;
+            height: 42vh;
+            max-height: none;
+          }
+
+          .wizard-actions {
+            flex-direction: column;
+          }
+
+          .wizard-actions :global(.btn) {
+            width: 100%;
+          }
+
+          .preview-panel .panel-body {
+            min-height: 320px;
           }
         }
       `}</style>
