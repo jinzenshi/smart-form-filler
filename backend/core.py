@@ -488,7 +488,7 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
         doc.save(out)
         output_bytes = out.getvalue()
         if return_fill_data:
-            return output_bytes, {}
+            return output_bytes, {}, []
         return output_bytes
 
     # 3. 调用 AI 进行推理
