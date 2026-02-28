@@ -105,20 +105,20 @@ class PlaceholderReplacer:
         }]
 
         data = {
-            "model": "doubao-seed-1-6-251015",
+            "model": "deepseek-ai/DeepSeek-V3.2",
             "messages": messages,
-            "thinking":{"type": "disabled"},
+            "extra_body": {"enable_thinking": True},
             "top_p": 0.7,
             "temperature": 1
         }
 
         try:
-            print(f"🔄 正在发送请求到: https://ark.cn-beijing.volces.com/api/v3/chat/completions")
-            print(f"📝 使用模型: doubao-seed-1-6-251015")
+            print(f"🔄 正在发送请求到: https://api-inference.modelscope.cn/v1/chat/completions")
+            print(f"📝 使用模型: deepseek-ai/DeepSeek-V3.2")
             print(f"📊 提示词长度: {len(prompt)} 字符")
 
             response = requests.post(
-                "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
+                "https://api-inference.modelscope.cn/v1/chat/completions",
                 headers=headers,
                 json=data,
                 timeout=120
@@ -271,7 +271,7 @@ def main():
     api_key = None
 
     # 1. 尝试从环境变量获取
-    api_key = os.environ.get('ARK_API_KEY')
+    api_key = os.environ.get('MODELSCOPE_API_KEY')
 
     # 2. 如果没有，尝试从api_key.txt文件读取
     if not api_key:
@@ -286,7 +286,7 @@ def main():
 
     if api_key == "YOUR_API_KEY_HERE":
         print("❌ 请设置您的API Key！")
-        print("方法1：设置环境变量 ARK_API_KEY")
+        print("方法1：设置环境变量 MODELSCOPE_API_KEY")
         print(f"方法2：在当前目录创建 api_key.txt 文件并写入API Key")
         print("方法3：修改代码中的api_key变量")
         return

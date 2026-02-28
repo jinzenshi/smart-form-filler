@@ -75,9 +75,9 @@ def analyze_missing_fields(docx_bytes, user_info_text):
     headers_text = "\n".join([f"- {h}" for h in all_headers if h])
     placeholders_text = "\n".join([f"- {k}: 表头={v['header'] if v['header'] else '无'}" for k, v in placeholder_info.items()])
 
-    url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
-    api_key = os.environ.get("ARK_API_KEY") or "5410d463-1115-4320-9279-a5441ce30694"
-    model_endpoint = os.environ.get("MODEL_ENDPOINT") or "doubao-seed-1-6-251015"
+    url = "https://api-inference.modelscope.cn/v1/chat/completions"
+    api_key = os.environ.get("MODELSCOPE_API_KEY") or "ms-0f5e7360-cff3-404c-aab1-de6a8201ecad"
+    model_endpoint = os.environ.get("MODEL_ENDPOINT") or "deepseek-ai/DeepSeek-V3.2"
 
     prompt = f"""你是一个表单字段分析助手。请仔细分析表格中的空单元格和个人信息，找出哪些字段在个人信息中没有明确提供。
 
@@ -222,9 +222,9 @@ def audit_template(docx_bytes, user_info_text):
         return {"success": True, "items": [], "matched_count": 0, "missing_count": 0}
 
     # 2. 调用 AI 分析匹配情况
-    url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
-    api_key = os.environ.get("ARK_API_KEY") or "5410d463-1115-4320-9279-a5441ce30694"
-    model_endpoint = os.environ.get("MODEL_ENDPOINT") or "doubao-seed-1-6-251015"
+    url = "https://api-inference.modelscope.cn/v1/chat/completions"
+    api_key = os.environ.get("MODELSCOPE_API_KEY") or "ms-0f5e7360-cff3-404c-aab1-de6a8201ecad"
+    model_endpoint = os.environ.get("MODEL_ENDPOINT") or "deepseek-ai/DeepSeek-V3.2"
 
     # 构建占位符信息文本
     placeholders_text = "\n".join([
@@ -313,16 +313,16 @@ def audit_template(docx_bytes, user_info_text):
         return {"success": False, "error": str(e), "items": []}
 
 
-def get_doubao_response(user_info, markdown_context):
+def get_modelscope_response(user_info, markdown_context):
     """
     参考 smart.py 的提示词思路，使用 Markdown 表格作为上下文
     """
     if isinstance(user_info, bytes):
         user_info = user_info.decode('utf-8')
 
-    url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
-    api_key = os.environ.get("ARK_API_KEY") or "5410d463-1115-4320-9279-a5441ce30694"
-    model_endpoint = os.environ.get("MODEL_ENDPOINT") or "doubao-seed-1-6-251015"
+    url = "https://api-inference.modelscope.cn/v1/chat/completions"
+    api_key = os.environ.get("MODELSCOPE_API_KEY") or "ms-0f5e7360-cff3-404c-aab1-de6a8201ecad"
+    model_endpoint = os.environ.get("MODEL_ENDPOINT") or "deepseek-ai/DeepSeek-V3.2"
 
     # 参考 smart.py 的提示词构建方式
     prompt = f"""你是一个专业的占位符替换助手。请分析以下 Markdown 表格和个人信息，推断每个占位符应该替换成什么内容。
@@ -350,7 +350,7 @@ def get_doubao_response(user_info, markdown_context):
         "messages": [{"role": "user", "content": prompt}], 
         "temperature": 1, 
         "top_p": 0.7,
-        "thinking": {"type": "disabled"}
+        "extra_body": {"enable_thinking": True}
     }
 
     try:
@@ -492,7 +492,7 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False):
         return output_bytes
 
     # 3. 调用 AI 进行推理
-    fill_data = get_doubao_response(user_info_text, "\n".join(markdown_lines))
+    fill_data = get_modelscope_response(user_info_text, "\n".join(markdown_lines))
 
     # 4. 收集未填充的字段信息
     missing_fields = []  # 存储未填充的字段（值为空或不存在）
@@ -563,9 +563,9 @@ def infer_field_names_with_ai(placeholder_info_map, markdown_context, user_info_
     if not placeholder_info_map:
         return []
 
-    url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
-    api_key = os.environ.get("ARK_API_KEY") or "5410d463-1115-4320-9279-a5441ce30694"
-    model_endpoint = os.environ.get("MODEL_ENDPOINT") or "doubao-seed-1-6-251015"
+    url = "https://api-inference.modelscope.cn/v1/chat/completions"
+    api_key = os.environ.get("MODELSCOPE_API_KEY") or "ms-0f5e7360-cff3-404c-aab1-de6a8201ecad"
+    model_endpoint = os.environ.get("MODEL_ENDPOINT") or "deepseek-ai/DeepSeek-V3.2"
 
     # 构建占位符信息
     placeholders_text = "\n".join([

@@ -21,9 +21,9 @@ class FormFiller:
     """智能表单填写器"""
 
     def __init__(self):
-        self.api_key = os.environ.get("ARK_API_KEY") or "5410d463-1115-4320-9279-a5441ce30694"
-        self.model_endpoint = os.environ.get("MODEL_ENDPOINT") or "doubao-seed-1-6-251015"
-        self.url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions"
+        self.api_key = os.environ.get("MODELSCOPE_API_KEY") or "ms-0f5e7360-cff3-404c-aab1-de6a8201ecad"
+        self.model_endpoint = os.environ.get("MODEL_ENDPOINT") or "deepseek-ai/DeepSeek-V3.2"
+        self.url = "https://api-inference.modelscope.cn/v1/chat/completions"
 
     def convert_to_markdown(self, doc: Document) -> Tuple[str, List[Tuple]]:
         """
@@ -120,7 +120,7 @@ class FormFiller:
         data = {
             "model": self.model_endpoint,
             "messages": [{"role": "user", "content": prompt}],
-            "thinking": {"type": "disabled"},
+            "extra_body": {"enable_thinking": True},
             "top_p": 0.7,
             "temperature": 1
         }
