@@ -23,8 +23,8 @@ export default function LoginPage() {
       if (result.success && result.token) {
         // Store auth data in localStorage (works reliably on Vercel)
         setAuthData(result.token, result.username || username)
-        // Redirect to admin
-        router.push('/admin')
+        // Redirect to workbench home
+        router.push('/')
         router.refresh()
       } else {
         setError(result.error || '登录失败')
