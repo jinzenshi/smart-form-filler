@@ -99,9 +99,6 @@ export function WorkbenchPage() {
   const [currentStep, setCurrentStep] = useState(1)
 
   // 补充信息状态 (Step 3)
-  const [missingFields, setMissingFields] = useState<string[]>([])
-  const [lowConfidenceFields, setLowConfidenceFields] = useState<string[]>([])
-  const [supplementaryInfo, setSupplementaryInfo] = useState('')
 
   // 是否可以进入下一步
   const canGoToStep2 = userInfo.trim().length > 0
@@ -109,7 +106,7 @@ export function WorkbenchPage() {
 
   // 是否可以预览
   const canPreview = (docxFile || defaultTemplateBlob) && (userInfo.trim() || infoFile)
-  const hasSupplementFields = missingFields.length > 0 || lowConfidenceFields.length > 0
+  
 
   function handleZoomIn() {
     setPreviewScale((prev) => Math.min(2, Number((prev + 0.1).toFixed(2))))
@@ -292,16 +289,13 @@ export function WorkbenchPage() {
         if (hasFieldsNeedSupplement) {
           setMissingFields(responseMissingFields)
           setLowConfidenceFields(responseLowConfidenceFields)
-          setSupplementaryInfo('')
-          setPreviewBlob(null)
+                setPreviewBlob(null)
           setCurrentStep(3)
           toast.info(response.message || '检测到部分字段缺失，请先补充信息')
         } else if (response.data) {
           setPreviewBlob(base64ToBlob(response.data))
           setPreviewScale(1)
-          setMissingFields([])
-          setLowConfidenceFields([])
-          setCurrentStep(4)
+                      setCurrentStep(3)
         } else {
           toast.error(response.message || '预览数据为空，请重试')
         }
@@ -327,104 +321,13 @@ export function WorkbenchPage() {
     return combinedFields.map((field) => `${field}: `).join('\n')
   }
 
-  // 从第二步开始：先走轻量检查（同口径），再按结果进入 Step 3 或 Step 4
+  // 从第二步开始：直接生成预览
   async function handleStartFill() {
     if (!canPreview) return
-
-    setLoading(true)
-    setProgressStep(0)
-
-    try {
-      setProgressStep(1)
-
-      const templateFile = docxFile || new File([defaultTemplateBlob!], '模板.docx', {
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      })
-
-      setProgressStep(2)
-      const response = await processDocx(templateFile, userInfo, false, undefined, true)
-
-      if (!response.success) {
-        toast.error(response.message || '检查失败，请重试')
-        return
-      }
-
-      setProgressStep(3)
-      setLatestFillData(response.fill_data || '')
-
-      // Filter out internal {n} placeholder tags - they are meaningless to users
-      const placeholderPattern = /^{\d+}$/
-      const responseMissingFields = (response.missing_fields || []).filter((f: string) => !placeholderPattern.test(f))
-      const responseLowConfidenceFields = (response.low_confidence_fields || []).filter((f: string) => !placeholderPattern.test(f))
-      const hasFieldsNeedSupplement =
-        responseMissingFields.length > 0 || responseLowConfidenceFields.length > 0
-
-      if (hasFieldsNeedSupplement) {
-        setMissingFields(responseMissingFields)
-        setLowConfidenceFields(responseLowConfidenceFields)
-        setSupplementaryInfo('')
-        setPreviewBlob(null)
-        setCurrentStep(3)
-        toast.info(response.message || '检测到部分字段缺失，请先补充信息')
-        return
-      }
-
-      await handlePreview(response.fill_data)
-    } catch (e: any) {
-      toast.error(e.message || '网络错误，请重试')
-    } finally {
-      setLoading(false)
-      setProgressStep(-1)
-    }
+    await handlePreview()
   }
 
-  // 确认补充信息后生成预览
-  async function handleConfirmSupplement() {
-    setLoading(true)
-    setProgressStep(0)
 
-    try {
-      setProgressStep(1)
-
-      // 合并用户信息和补充信息
-      const mergedUserInfo = supplementaryInfo.trim()
-        ? `${userInfo}\n\n## 补充信息\n${supplementaryInfo}`
-        : userInfo
-
-      const templateFile = docxFile || new File([defaultTemplateBlob!], '模板.docx', {
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      })
-
-      setProgressStep(2)
-      const response = await processDocx(templateFile, mergedUserInfo, true)
-
-      if (response.success) {
-        setProgressStep(3)
-        setLatestFillData(response.fill_data || '')
-
-        if (response.data) {
-          setPreviewBlob(base64ToBlob(response.data))
-          setPreviewScale(1)
-          setCurrentStep(4)  // 跳转到 Step 4
-
-          if ((response.missing_fields?.length ?? 0) > 0) {
-            toast.info(`已生成预览，但可能仍有未匹配字段信息。`)
-          } else {
-            toast.success("预览生成成功")
-          }
-        } else {
-          toast.error(response.message || '预览数据为空，请重试')
-        }
-      } else {
-        toast.error(response.message || '处理失败')
-      }
-    } catch (e: any) {
-      toast.error(e.message || '网络错误，请重试')
-    } finally {
-      setLoading(false)
-      setProgressStep(-1)
-    }
-  }
 
   // 下载文档
   async function handleDownload() {
@@ -487,9 +390,6 @@ export function WorkbenchPage() {
     setPreviewBlob(null)
     setLatestFillData('')
     setPreviewScale(1)
-    setMissingFields([])
-    setLowConfidenceFields([])
-    setSupplementaryInfo('')
   }
 
   function goToStep2() {
@@ -509,12 +409,12 @@ export function WorkbenchPage() {
   function goToStep4() {
     // 如果已经有预览结果，直接跳转到预览页面
     if (previewBlob) {
-      setCurrentStep(4)
+      setCurrentStep(3)
       return
     }
     // 否则需要检查前置条件
     if (canGoToStep3 && canGoToStep2) {
-      setCurrentStep(4)
+      setCurrentStep(3)
     }
   }
 
@@ -567,27 +467,22 @@ export function WorkbenchPage() {
             <span className="wizard-step-label">上传报名表</span>
           </div>
           <div className={`wizard-connector ${currentStep >= 3 ? 'active' : ''}`}></div>
-          <div className={`wizard-step ${currentStep >= 3 ? 'active' : ''} ${currentStep > 3 ? 'completed' : ''}`} onClick={hasSupplementFields ? goToStep3 : undefined}>
-            <div className="wizard-step-icon">{currentStep > 3 ? '✓' : '3'}</div>
-            <span className="wizard-step-label">补充信息</span>
-          </div>
-          <div className={`wizard-connector ${currentStep >= 4 ? 'active' : ''}`}></div>
-          <div className={`wizard-step ${currentStep >= 4 ? 'active' : ''}`} onClick={goToStep4}>
-            <div className="wizard-step-icon">4</div>
+          <div className={`wizard-step ${currentStep >= 3 ? 'active' : ''}`} onClick={goToStep3}>
+            <div className="wizard-step-icon">3</div>
             <span className="wizard-step-label">预览结果</span>
           </div>
         </div>
 
         <div className="content-grid">
           {/* Left Panel - Editor (hide on step 4) */}
-          {currentStep !== 4 && (
+          {currentStep !== 3 && (
             <section className="panel editor-panel">
               <div className="panel-header">
                 <h2>
                   <span className="panel-icon">✎</span>
                   {currentStep === 1 && '填写个人信息'}
                   {currentStep === 2 && '上传报名表'}
-                  {currentStep === 3 && '补充信息'}
+                  
                 </h2>
               </div>
 
@@ -702,87 +597,8 @@ export function WorkbenchPage() {
                   </div>
                 )}
 
-                {/* Step 3: Supplement Missing Info */}
+                {/* Step 3: Preview */}
                 {currentStep === 3 && (
-                  <div className="wizard-content">
-                    <div className="supplement-section">
-                      <div className="supplement-header">
-                        <h3>补充缺失信息</h3>
-                      </div>
-                      <div className="supplement-hint">
-                        <span className="hint-icon">💡</span>
-                        <p>以下字段未能可靠匹配，请补充后再生成：</p>
-                      </div>
-
-                      {lowConfidenceFields.filter(f => !/^{\d+}$/.test(f)).length > 0 && (
-                        <div className="low-confidence-panel">
-                          <p className="low-confidence-title">低置信度字段（已自动留空，避免误填）</p>
-                          <div className="low-confidence-list">
-                            {lowConfidenceFields.filter(f => !/^{\d+}$/.test(f)).map((field) => (
-                              <span key={field} className="low-confidence-tag">{field}</span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {hasSupplementFields ? (
-                        <div className="supplement-form flex flex-col gap-4 mt-6">
-                          {Array.from(new Set([...missingFields, ...lowConfidenceFields])).filter(f => !/^{\d+}$/.test(f)).map((field) => {
-                            const escapedField = field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                            const regex = new RegExp(`^\\s*${escapedField}\\s*:\\s*(.*)$`, 'm');
-                            const match = supplementaryInfo.match(regex);
-                            const val = match ? match[1] : '';
-                            const displayField = field;
-
-                            return (
-                              <div key={field} className="flex flex-col gap-2">
-                                <label className="text-sm font-semibold text-slate-700 ml-1">{displayField}</label>
-                                <input
-                                  type="text"
-                                  value={val}
-                                  onChange={(e) => {
-                                    const newVal = e.target.value;
-                                    let newInfo = supplementaryInfo;
-                                    if (match) {
-                                      newInfo = supplementaryInfo.replace(regex, `${field}: ${newVal}`);
-                                    } else {
-                                      const append = `\n${field}: ${newVal}`;
-                                      newInfo = supplementaryInfo + append;
-                                    }
-                                    setSupplementaryInfo(newInfo.trim());
-                                  }}
-                                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
-                                  placeholder={`请输入 ${displayField}`}
-                                />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="no-missing-fields">
-                          <span className="success-icon">✓</span>
-                          <p>所有字段都已匹配，无需补充信息</p>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="wizard-actions">
-                      <Button variant="secondary" onClick={goToStep2}>
-                        上一步
-                      </Button>
-                      <Button
-                        variant="primary"
-                        onClick={handleConfirmSupplement}
-                        disabled={loading || (hasSupplementFields && !supplementaryInfo.trim())}
-                      >
-                        {loading ? '处理中...' : '确认补充并生成预览'}
-                      </Button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 4: Preview */}
-                {currentStep === 4 && (
                   <div className="wizard-content">
                     {/* Actions */}
                     <div className="action-section">
@@ -808,7 +624,7 @@ export function WorkbenchPage() {
           )}
 
           {/* Right Panel - Preview (only show in step 4) */}
-          {currentStep === 4 && (
+          {currentStep === 3 && (
             <section className="panel preview-panel">
               <div className="panel-header">
                 <h2>

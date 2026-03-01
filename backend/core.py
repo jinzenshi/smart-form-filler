@@ -471,19 +471,21 @@ def get_modelscope_response(user_info, markdown_context):
     model_endpoint = os.environ.get("MODEL_ENDPOINT") or "deepseek-ai/DeepSeek-V3.2"
 
     # 参考 smart.py 的提示词构建方式
-    prompt = f"""你是一个专业的占位符替换助手。请分析以下 Markdown 表格和个人信息，输出每个占位符应填内容。
+    prompt = f"""你是一个专业的占位符替换助手。请分析以下 Markdown 格式的表单上下文和个人信息，输出每个占位符应填的内容。
 
 **任务要求：**
-1. 仅基于【个人信息】中明确出现的内容进行填写，不得编造、不得脑补。
-2. 仔细分析表格中的占位符格式（如 {{1}}、{{2}} 等），以及其所在行列上下文。
-3. 如果无法确定某个占位符的内容，必须返回空字符串 ""。
-4. 返回格式必须是纯 JSON，格式为：{{"{{1}}": "内容", "{{2}}": "内容"}}。
-5. 返回值必须是简洁字段值，不要输出解释句、原因或多余前后缀。
+1. 仅基于【个人信息】中明确出现的内容进行填写，不得编造。
+2. 仔细分析表格/段落中的占位符格式（如 {{1}}、{{2}} 等），以及其所在位置及原内容。
+3. 占位符处理规则：
+   - 空单元格：提取信息后直接填入。如果无法确定，必须返回空字符串 ""
+   - 包含复选框（□）：仔细阅读原内容，原样返回并只将对应的“□”替换为“[√]”或“■”。例如原内容"□精通 □不会"，若用户精通，应返回"[√]精通 □不会"。若无法确定，必须返回原内容不变。
+   - 包含填空线（___）：仔细阅读原内容，在下划线的位置填入获取的信息并一同返回。例如原内容"持有___证"，若有C1证，应返回"持有 C1 证"。若无法确定，必须返回原内容不变。
+4. 返回格式必须是纯 JSON，不需要解释，格式类似：{{"{{1}}": "内容", "{{2}}": "内容"}}。
 
 **个人信息：**
 {user_info}
 
-**Markdown表格上下文：**
+**表单上下文：**
 {markdown_context}
 
 **注意：**
@@ -575,10 +577,43 @@ def _get_table_default_font(table):
     return default_font_name, default_font_size
 
 
+def _replace_paragraph_text_preserve_format(paragraph, new_text, default_font_name=None, default_font_size=None):
+    first_run_format = None
+    if paragraph.runs:
+        first_run = paragraph.runs[0]
+        first_run_format = {
+            'name': first_run.font.name,
+            'size': first_run.font.size,
+            'bold': first_run.font.bold,
+            'italic': first_run.font.italic,
+            'underline': first_run.font.underline,
+        }
+
+    for run in list(paragraph.runs):
+        r = run._element
+        r.getparent().remove(r)
+
+    new_run = paragraph.add_run(new_text)
+    if first_run_format:
+        if first_run_format['name']:
+            new_run.font.name = first_run_format['name']
+        if first_run_format['size']:
+            new_run.font.size = first_run_format['size']
+        if first_run_format['bold'] is not None:
+            new_run.font.bold = first_run_format['bold']
+        if first_run_format['italic'] is not None:
+            new_run.font.italic = first_run_format['italic']
+        if first_run_format['underline'] is not None:
+            new_run.font.underline = first_run_format['underline']
+    elif default_font_name or default_font_size:
+        if default_font_name:
+            new_run.font.name = default_font_name
+        if default_font_size:
+            new_run.font.size = default_font_size
+
 def _replace_cell_text_preserve_format(cell, new_text, default_font_name=None, default_font_size=None):
     """
     替换单元格文本，保持原有格式。
-    借鉴 fill_template.py 的思路：保存 run 格式 → 删除旧 run → 创建新 run → 恢复格式。
     """
     for paragraph in cell.paragraphs:
         # 1. 保存第一个 run 的格式
@@ -693,16 +728,30 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
                     continue
 
                 text = cell.text.strip()
-                if not text:
+                
+                skip_labels = [
+                    '姓名', '性别', '民族', '出生日期', '参加工作时间',
+                    '政治面貌', '婚姻状况', '身份证号', '学历', '毕业院校',
+                    '专业', '特长', '计算机', '能力', '是否', '残疾', '类别', '等级',
+                    '持有', '驾驶证', '情况', '联系电话', '户口地址', '常住地址',
+                    '照片', '相片', '贴', '年', '月', '日'
+                ]
+                
+                is_label = False
+                for label in skip_labels:
+                    if text == label or text == label + '：' or text == label + ':':
+                        is_label = True
+                        break
+
+                if not text or (not is_label and ('□' in text or '___' in text)):
                     # 为空单元格创建占位符
                     tag = f"{{{counter}}}"
-                    # 使用格式保持的方式写入占位符标记
-                    _replace_cell_text_preserve_format(
-                        cell, tag,
-                        table_default_fonts[t_idx][0],
-                        table_default_fonts[t_idx][1]
-                    )
-                    placeholder_map[tag] = cell
+                    # 暂时不替换 docx 中的文本或格式，我们把需要处理的结构存起来
+                    placeholder_map[tag] = {
+                        "cell": cell,
+                        "type": "checkbox" if '□' in text else "fillblank" if '___' in text else "empty",
+                        "original_text": text
+                    }
                     # 获取表头信息
                     header = ""
                     if r_idx > 0 and c_idx < len(table.rows[0].cells):
@@ -713,9 +762,13 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
                         "header": header,
                         "table_index": t_idx + 1,
                         "row_index": r_idx + 1,
-                        "col_index": c_idx + 1
+                        "col_index": c_idx + 1,
+                        "original_text": text
                     }
-                    row_cells_content.append(tag)
+                    if text:
+                        row_cells_content.append(f"{tag}(原内容:{text})")
+                    else:
+                        row_cells_content.append(tag)
                     counter += 1
                 else:
                     row_cells_content.append(text)
@@ -724,6 +777,26 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
             markdown_lines.append("| " + " | ".join(row_cells_content) + " |")
             if r_idx == 0: # 添加分割线
                 markdown_lines.append("| " + " | ".join(["---"] * max_cols) + " |")
+
+    # 2.5 遍历段落补充（复选框、填空）
+    for p_idx, paragraph in enumerate(doc.paragraphs):
+        text = paragraph.text.strip()
+        if '___' in text or '□' in text:
+            tag = f"{{{counter}}}"
+            placeholder_map[tag] = {
+                "paragraph": paragraph,
+                "type": "checkbox" if '□' in text else "fillblank",
+                "original_text": text
+            }
+            placeholder_info[tag] = {
+                "header": "文本段落",
+                "table_index": 0,
+                "row_index": 0,
+                "col_index": 0,
+                "original_text": text
+            }
+            markdown_lines.append(f"\n段落内容: {tag}(原内容:{text})\n")
+            counter += 1
 
     if not placeholder_map:
         out = io.BytesIO()
@@ -785,32 +858,56 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
         target_key = key if key.startswith("{") else f"{{{key}}}"
         if target_key in placeholder_map:
             resolved_placeholders.add(target_key)
-            cell = placeholder_map[target_key]
+            item = placeholder_map[target_key]
+            is_cell = "cell" in item
+            container = item.get("cell") or item.get("paragraph")
+            original_text = item["original_text"]
 
             normalized_value = "" if value is None else str(value).strip()
-            if normalized_value and not _is_explicit_value(normalized_value, explicit_profile_values, normalized_user_info_text):
+            
+            if normalized_value and not original_text and not _is_explicit_value(normalized_value, explicit_profile_values, normalized_user_info_text):
                 print(f"⚠️ 低置信度值已清空: {target_key} -> {normalized_value}")
                 low_confidence_keys.add(target_key)
                 normalized_value = ""
 
+            # 处理缺失
+            if not normalized_value or normalized_value == original_text:
+                if not original_text: 
+                    register_missing(target_key)
+                if not original_text:
+                    normalized_value = ""
+                else:
+                    normalized_value = original_text
+
             fill_data[target_key] = normalized_value
-            # 查找该单元格所属表格的默认字体
-            cell_table_idx = placeholder_info.get(target_key, {}).get("table_index", 1) - 1
-            def_font = table_default_fonts.get(cell_table_idx, (None, None))
-            _replace_cell_text_preserve_format(cell, normalized_value, def_font[0], def_font[1])
+            
+            if is_cell:
+                cell_table_idx = placeholder_info.get(target_key, {}).get("table_index", 1) - 1
+                def_font = table_default_fonts.get(cell_table_idx, (None, None))
+                _replace_cell_text_preserve_format(container, normalized_value, def_font[0], def_font[1])
+            else:
+                _replace_paragraph_text_preserve_format(container, normalized_value)
 
-            if not normalized_value:
-                register_missing(target_key)
-
-    # AI 未返回或未命中的占位符统一视为缺失，避免保留 {n} 标签
-    for target_key, cell in placeholder_map.items():
+    # AI 未返回或未命中的占位符统一视为缺失
+    for target_key, item in placeholder_map.items():
         if target_key in resolved_placeholders:
             continue
-        cell_table_idx = placeholder_info.get(target_key, {}).get("table_index", 1) - 1
-        def_font = table_default_fonts.get(cell_table_idx, (None, None))
-        _replace_cell_text_preserve_format(cell, "", def_font[0], def_font[1])
-        fill_data[target_key] = ""
-        register_missing(target_key)
+        
+        is_cell = "cell" in item
+        container = item.get("cell") or item.get("paragraph")
+        original_text = item["original_text"]
+        
+        fill_data[target_key] = original_text
+        
+        if is_cell:
+            cell_table_idx = placeholder_info.get(target_key, {}).get("table_index", 1) - 1
+            def_font = table_default_fonts.get(cell_table_idx, (None, None))
+            _replace_cell_text_preserve_format(container, original_text, def_font[0], def_font[1])
+        else:
+            _replace_paragraph_text_preserve_format(container, original_text)
+
+        if not original_text:
+            register_missing(target_key)
 
     inferred_fields_map = {}
 
