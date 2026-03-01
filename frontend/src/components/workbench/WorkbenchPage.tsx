@@ -206,8 +206,10 @@ export function WorkbenchPage() {
       try {
         if (file.name.endsWith('.pdf')) {
           const pdfjsLib = await import('pdfjs-dist')
-          // Set worker source dynamically
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
+          const workerUrl = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
+          const workerRes = await fetch(workerUrl)
+          const workerBlob = await workerRes.blob()
+          pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(workerBlob)
 
           const arrayBuffer = await file.arrayBuffer()
           const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
@@ -522,7 +524,7 @@ export function WorkbenchPage() {
           <div className="header-left">
             <h1 className="logo">
               <span className="logo-icon">◇</span>
-              文档工坊
+              SmartFiller
             </h1>
           </div>
 
@@ -728,7 +730,8 @@ export function WorkbenchPage() {
                             const regex = new RegExp(`^\\s*${escapedField}\\s*:\\s*(.*)$`, 'm');
                             const match = supplementaryInfo.match(regex);
                             const val = match ? match[1] : '';
-                            const displayField = field.match(/^{\d+}$/) ? `简历补充项 (模板位置 ${field})` : field;
+                            const isUnknown = field.match(/^{\d+}$/);
+                            const displayField = isUnknown ? `未能识别的表格项（建议在第四步查看生成效果后，如果文档中这个位置空缺再填写）` : field;
 
                             return (
                               <div key={field} className="flex flex-col gap-2">
