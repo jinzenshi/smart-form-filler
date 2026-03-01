@@ -212,7 +212,9 @@ def analyze_missing_fields(docx_bytes, user_info_text):
     headers_text = "\n".join([f"- {h}" for h in all_headers if h])
     placeholders_text = "\n".join([f"- {k}: 表头={v['header'] if v['header'] else '无'}" for k, v in placeholder_info.items()])
 
-    url = "https://api-inference.modelscope.cn/v1/chat/completions"
+    url = os.environ.get("API_BASE_URL") or "https://api-inference.modelscope.cn/v1/chat/completions"
+    if url and not url.endswith("/chat/completions"):
+        url = url.rstrip("/") + "/chat/completions"
     api_key = os.environ.get("MODELSCOPE_API_KEY", "")
     model_endpoint = os.environ.get("MODEL_ENDPOINT") or "deepseek-ai/DeepSeek-V3.2"
 
@@ -361,7 +363,9 @@ def audit_template(docx_bytes, user_info_text):
         return {"success": True, "items": [], "matched_count": 0, "missing_count": 0}
 
     # 2. 调用 AI 分析匹配情况
-    url = "https://api-inference.modelscope.cn/v1/chat/completions"
+    url = os.environ.get("API_BASE_URL") or "https://api-inference.modelscope.cn/v1/chat/completions"
+    if url and not url.endswith("/chat/completions"):
+        url = url.rstrip("/") + "/chat/completions"
     api_key = os.environ.get("MODELSCOPE_API_KEY", "")
     model_endpoint = os.environ.get("MODEL_ENDPOINT") or "deepseek-ai/DeepSeek-V3.2"
 
@@ -460,7 +464,9 @@ def get_modelscope_response(user_info, markdown_context):
     if isinstance(user_info, bytes):
         user_info = user_info.decode('utf-8')
 
-    url = "https://api-inference.modelscope.cn/v1/chat/completions"
+    url = os.environ.get("API_BASE_URL") or "https://api-inference.modelscope.cn/v1/chat/completions"
+    if url and not url.endswith("/chat/completions"):
+        url = url.rstrip("/") + "/chat/completions"
     api_key = os.environ.get("MODELSCOPE_API_KEY", "")
     model_endpoint = os.environ.get("MODEL_ENDPOINT") or "deepseek-ai/DeepSeek-V3.2"
 
