@@ -50,6 +50,33 @@ def download_template() -> bytes:
     return response.content
 
 
+def run_analyze_missing(token: str, template_bytes: bytes) -> list[str]:
+    url = f"{BASE_URL}/api/analyze-missing"
+    headers = {"Authorization": f"Bearer {token}"}
+    files = {
+        "docx": (
+            "template.docx",
+            template_bytes,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ),
+        "user_info_text": (None, USER_INFO_TEXT),
+    }
+
+    response = requests.post(url, headers=headers, files=files, timeout=TIMEOUT_SECONDS)
+    if response.status_code != 200:
+        fail(f"analyze-missing status={response.status_code}, body={response.text[:300]}")
+
+    payload = response.json()
+    if not payload.get("success"):
+        fail(f"analyze-missing success=false, body={response.text[:500]}")
+
+    missing_fields = payload.get("missing_fields")
+    if not isinstance(missing_fields, list):
+        fail("analyze-missing missing_fields is not a list")
+
+    return missing_fields
+
+
 def run_preview(token: str, template_bytes: bytes) -> dict:
     url = f"{BASE_URL}/api/process"
     headers = {"Authorization": f"Bearer {token}"}
@@ -85,15 +112,65 @@ def run_preview(token: str, template_bytes: bytes) -> dict:
     if len(missing_fields) == 0:
         fail("preview missing_fields should not be empty for regression scenario")
 
+    low_confidence_fields = payload.get("low_confidence_fields")
+    if not isinstance(low_confidence_fields, list):
+        fail("preview low_confidence_fields is not a list")
+
+    fill_data = payload.get("fill_data")
+    if not isinstance(fill_data, str) or not fill_data.strip():
+        fail("preview fill_data is empty")
+
+    try:
+        parsed_fill_data = json.loads(fill_data)
+    except json.JSONDecodeError as exc:
+        fail(f"preview fill_data is not valid json: {exc}")
+
+    if not isinstance(parsed_fill_data, dict):
+        fail("preview fill_data json is not an object")
+
     return payload
+
+
+def run_download_with_fill_data(token: str, template_bytes: bytes, fill_data: str) -> None:
+    url = f"{BASE_URL}/api/process"
+    headers = {"Authorization": f"Bearer {token}"}
+    files = {
+        "docx": (
+            "template.docx",
+            template_bytes,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ),
+        "user_info_text": (None, USER_INFO_TEXT),
+        "preview": (None, "false"),
+        "fill_data": (None, fill_data),
+    }
+
+    response = requests.post(url, headers=headers, files=files, timeout=TIMEOUT_SECONDS)
+    if response.status_code != 200:
+        fail(f"download status={response.status_code}, body={response.text[:300]}")
+
+    content_type = response.headers.get("content-type", "")
+    if "application/vnd.openxmlformats-officedocument.wordprocessingml.document" not in content_type:
+        fail(f"download content-type unexpected: {content_type}")
+
+    if not response.content.startswith(b"PK"):
+        fail("downloaded docx does not look like a zip/docx file")
 
 
 def main() -> None:
     print(f"BASE_URL={BASE_URL}")
     token = login()
     template = download_template()
-    payload = run_preview(token, template)
-    print(f"OK: preview success, missing_fields={len(payload.get('missing_fields', []))}")
+    analyzed_missing_fields = run_analyze_missing(token, template)
+    preview_payload = run_preview(token, template)
+    run_download_with_fill_data(token, template, preview_payload.get("fill_data", ""))
+    print(
+        "OK: "
+        f"analyze_missing={len(analyzed_missing_fields)}, "
+        f"preview_missing={len(preview_payload.get('missing_fields', []))}, "
+        f"preview_low_confidence={len(preview_payload.get('low_confidence_fields', []))}, "
+        "download=pass"
+    )
 
 
 if __name__ == "__main__":
