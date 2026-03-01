@@ -18,7 +18,7 @@ from auth import (
     authenticate_user, log_operation, get_current_user, is_admin,
     generate_token, security, create_temporary_account, check_user_expired
 )
-from supabase_client import upload_file_to_supabase, generate_unique_filename
+from supabase_client import upload_file_to_supabase, delete_file_from_supabase, generate_unique_filename
 
 app = FastAPI(title="智能填表系统")
 
@@ -31,12 +31,77 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+FILE_RETENTION_HOURS = int(os.getenv("FILE_RETENTION_HOURS", "24"))
+FILE_CLEANUP_INTERVAL_SECONDS = int(os.getenv("FILE_CLEANUP_INTERVAL_SECONDS", "1800"))
+LAST_FILE_CLEANUP_AT = None
+
+BUCKET_MAP = {
+    "docx": "docx-files",
+    "user_info": "user-info",
+    "screenshot": "feedback-screenshots"
+}
+
+
+def cleanup_expired_files(db: Session):
+    """删除超过保留期的文件记录与远端文件（默认24小时）"""
+    cutoff = datetime.utcnow() - timedelta(hours=FILE_RETENTION_HOURS)
+    expired_files = db.query(FileStorage).filter(FileStorage.created_at < cutoff).all()
+
+    deleted_count = 0
+    failed_count = 0
+
+    for file_record in expired_files:
+        bucket_name = BUCKET_MAP.get(file_record.file_type)
+        deleted_remote = True
+        if bucket_name:
+            deleted_remote = delete_file_from_supabase(bucket_name, file_record.file_path)
+
+        if deleted_remote:
+            db.delete(file_record)
+            deleted_count += 1
+        else:
+            failed_count += 1
+
+    if deleted_count:
+        db.commit()
+
+    if expired_files:
+        print(
+            f"🧹 文件保留清理：total={len(expired_files)}, deleted={deleted_count}, failed={failed_count}, cutoff={cutoff.isoformat()}"
+        )
+
+    return {
+        "total": len(expired_files),
+        "deleted": deleted_count,
+        "failed": failed_count,
+    }
+
+
+def maybe_cleanup_expired_files(db: Session):
+    """按时间间隔执行文件清理，避免每次请求都全表扫描"""
+    global LAST_FILE_CLEANUP_AT
+
+    now = datetime.utcnow()
+    if LAST_FILE_CLEANUP_AT and (now - LAST_FILE_CLEANUP_AT).total_seconds() < FILE_CLEANUP_INTERVAL_SECONDS:
+        return None
+
+    LAST_FILE_CLEANUP_AT = now
+    return cleanup_expired_files(db)
+
+
 # 应用启动事件
 @app.on_event("startup")
 async def startup_event():
     """应用启动时初始化数据库"""
     print("🚀 启动中...")
     init_db()
+
+    db = SessionLocal()
+    try:
+        maybe_cleanup_expired_files(db)
+    finally:
+        db.close()
+
     print("✅ 启动完成！")
 
 # 全局中间件：记录请求（生产环境可移除）
@@ -264,6 +329,7 @@ async def process(
         user_type = auth_result["type"]
         username = auth_result["username"]
 
+        maybe_cleanup_expired_files(db)
         docx_bytes = await docx.read()
 
         # 上传文件到 Supabase Storage（仅在非预览模式下）
@@ -841,6 +907,42 @@ async def get_files(
         for f in files
     ]
 
+@app.get("/api/admin/file-retention/status")
+async def file_retention_status(
+    run_cleanup: bool = False,
+    db: Session = Depends(get_db),
+    auth_result: dict = Depends(get_authenticated_user)
+):
+    """查看文件保留策略状态（仅管理员）"""
+    if not auth_result or auth_result["type"] != "normal":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    admin_user = auth_result["user"]
+    if not admin_user.is_admin:
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+
+    now = datetime.utcnow()
+    cutoff = now - timedelta(hours=FILE_RETENTION_HOURS)
+
+    total_files = db.query(FileStorage).count()
+    expired_files = db.query(FileStorage).filter(FileStorage.created_at < cutoff).count()
+
+    cleanup_result = None
+    if run_cleanup:
+        global LAST_FILE_CLEANUP_AT
+        cleanup_result = cleanup_expired_files(db)
+        LAST_FILE_CLEANUP_AT = datetime.utcnow()
+
+    return {
+        "retention_hours": FILE_RETENTION_HOURS,
+        "cleanup_interval_seconds": FILE_CLEANUP_INTERVAL_SECONDS,
+        "last_cleanup_at": LAST_FILE_CLEANUP_AT.isoformat() if LAST_FILE_CLEANUP_AT else None,
+        "cutoff": cutoff.isoformat(),
+        "total_files": total_files,
+        "expired_files": expired_files,
+        "cleanup_result": cleanup_result
+    }
+
 # ========== Token 用户相关 API ==========
 
 @app.get("/api/token/balance")
@@ -958,13 +1060,7 @@ async def delete_file(
         raise HTTPException(status_code=404, detail="文件不存在")
 
     # 从 Supabase Storage 删除文件
-    from supabase_client import delete_file_from_supabase
-    bucket_map = {
-        "docx": "docx-files",
-        "user_info": "user-info",
-        "screenshot": "feedback-screenshots"
-    }
-    bucket_name = bucket_map.get(file_record.file_type)
+    bucket_name = BUCKET_MAP.get(file_record.file_type)
     if bucket_name:
         delete_file_from_supabase(bucket_name, file_record.file_path)
 
