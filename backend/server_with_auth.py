@@ -34,6 +34,7 @@ app.add_middleware(
 FILE_RETENTION_HOURS = int(os.getenv("FILE_RETENTION_HOURS", "24"))
 FILE_CLEANUP_INTERVAL_SECONDS = int(os.getenv("FILE_CLEANUP_INTERVAL_SECONDS", "1800"))
 LAST_FILE_CLEANUP_AT = None
+SERVICE_STARTED_AT_UTC = datetime.now(timezone.utc)
 
 BUCKET_MAP = {
     "docx": "docx-files",
@@ -243,6 +244,25 @@ async def admin_page():
     if os.path.exists(os.path.join("static", "admin.html")):
         return FileResponse(os.path.join("static", "admin.html"))
     return {"message": "需要管理员权限"}
+
+@app.get("/api/version")
+async def api_version():
+    """运行版本信息，便于线上部署核验"""
+    now = datetime.now(timezone.utc)
+    commit = (
+        os.getenv("RENDER_GIT_COMMIT")
+        or os.getenv("GIT_COMMIT")
+        or os.getenv("VERCEL_GIT_COMMIT_SHA")
+        or "unknown"
+    )
+    return {
+        "success": True,
+        "service": "smart-form-filler-backend",
+        "commit": commit,
+        "started_at_utc": SERVICE_STARTED_AT_UTC.isoformat(),
+        "now_utc": now.isoformat(),
+        "uptime_seconds": int((now - SERVICE_STARTED_AT_UTC).total_seconds()),
+    }
 
 @app.post("/api/register")
 async def register(username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
