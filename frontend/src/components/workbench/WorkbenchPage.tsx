@@ -80,6 +80,7 @@ export function WorkbenchPage() {
 
   // 预览状态
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
+  const [latestFillData, setLatestFillData] = useState('')
   const [previewScale, setPreviewScale] = useState(1)
   const [loading, setLoading] = useState(false)
   const [progressStep, setProgressStep] = useState(-1)
@@ -261,7 +262,7 @@ export function WorkbenchPage() {
   }
 
   // 开始处理
-  async function handlePreview() {
+  async function handlePreview(prefilledFillData?: string) {
     if (!canPreview) return
 
     setLoading(true)
@@ -275,10 +276,11 @@ export function WorkbenchPage() {
       })
 
       setProgressStep(2)
-      const response = await processDocx(templateFile, userInfo, true)
+      const response = await processDocx(templateFile, userInfo, true, prefilledFillData)
 
       if (response.success) {
         setProgressStep(3)
+        setLatestFillData(response.fill_data || '')
 
         const responseMissingFields = response.missing_fields || []
         const responseLowConfidenceFields = response.low_confidence_fields || []
@@ -323,9 +325,53 @@ export function WorkbenchPage() {
     return combinedFields.map((field) => `${field}: `).join('\n')
   }
 
-  // 从第二步开始填充：直接走预览接口，保证与 Step 4 同一套字段判断逻辑
+  // 从第二步开始：先走轻量检查（同口径），再按结果进入 Step 3 或 Step 4
   async function handleStartFill() {
-    await handlePreview()
+    if (!canPreview) return
+
+    setLoading(true)
+    setProgressStep(0)
+
+    try {
+      setProgressStep(1)
+
+      const templateFile = docxFile || new File([defaultTemplateBlob!], '模板.docx', {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      })
+
+      setProgressStep(2)
+      const response = await processDocx(templateFile, userInfo, false, undefined, true)
+
+      if (!response.success) {
+        toast.error(response.message || '检查失败，请重试')
+        return
+      }
+
+      setProgressStep(3)
+      setLatestFillData(response.fill_data || '')
+
+      const responseMissingFields = response.missing_fields || []
+      const responseLowConfidenceFields = response.low_confidence_fields || []
+      const hasFieldsNeedSupplement =
+        responseMissingFields.length > 0 || responseLowConfidenceFields.length > 0
+
+      if (hasFieldsNeedSupplement) {
+        setMissingFields(responseMissingFields)
+        setLowConfidenceFields(responseLowConfidenceFields)
+        setSupplementaryInfo('')
+        setPreviewBlob(null)
+        setCurrentStep(3)
+        toast.info(response.message || '检测到部分字段缺失，请先补充信息')
+        return
+      }
+
+      await handlePreview(response.fill_data)
+    } catch (e: any) {
+      toast.error(e.message || '网络错误，请重试')
+    } finally {
+      setLoading(false)
+      setProgressStep(-1)
+    }
   }
 
   // 确认补充信息后生成预览
@@ -350,6 +396,7 @@ export function WorkbenchPage() {
 
       if (response.success) {
         setProgressStep(3)
+        setLatestFillData(response.fill_data || '')
 
         const responseMissingFields = response.missing_fields || []
         const responseLowConfidenceFields = response.low_confidence_fields || []
@@ -397,7 +444,7 @@ export function WorkbenchPage() {
         type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
       })
 
-      const response = await processDocx(templateFile, userInfo, false)
+      const response = await processDocx(templateFile, userInfo, false, latestFillData || undefined)
 
       if (response.blob) {
         setDownloadBlob(response.blob)
@@ -441,6 +488,7 @@ export function WorkbenchPage() {
   function goToStep1() {
     setCurrentStep(1)
     setPreviewBlob(null)
+    setLatestFillData('')
     setPreviewScale(1)
     setMissingFields([])
     setLowConfidenceFields([])
@@ -724,7 +772,7 @@ export function WorkbenchPage() {
                       <Button
                         className="action-btn"
                         disabled={!canPreview || loading}
-                        onClick={handlePreview}
+                        onClick={() => handlePreview()}
                       >
                         <span className="btn-icon">◉</span>
                         {loading ? '处理中...' : '重新生成预览'}

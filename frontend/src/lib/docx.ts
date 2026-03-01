@@ -29,11 +29,23 @@ export function base64ToBlob(base64: string, mime = 'application/vnd.openxmlform
   return new Blob([byteArray], { type: mime })
 }
 
-export async function processDocx(templateFile: File, userInfo: string, preview = true): Promise<ProcessResult> {
+export async function processDocx(
+  templateFile: File,
+  userInfo: string,
+  preview = true,
+  fillData?: string,
+  checkOnly = false
+): Promise<ProcessResult> {
   const form = new FormData()
   form.append('docx', templateFile)
   form.append('user_info_text', userInfo)
   form.append('preview', preview ? 'true' : 'false')
+  if (checkOnly) {
+    form.append('check_only', 'true')
+  }
+  if (fillData) {
+    form.append('fill_data', fillData)
+  }
 
   const res = await fetch(`${API_BASE}/api/process`, {
     method: 'POST',
@@ -48,7 +60,7 @@ export async function processDocx(templateFile: File, userInfo: string, preview 
     throw new Error(text || `HTTP ${res.status}`)
   }
 
-  if (!preview) {
+  if (!preview && !checkOnly) {
     const disposition = res.headers.get('content-disposition') || ''
     const isFile = disposition.includes('attachment')
     if (isFile) {

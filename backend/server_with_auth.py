@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 import json
 
 # 导入核心模块
-from core import fill_form, analyze_missing_fields, audit_template
+from core import fill_form, audit_template
 from models import init_db, User, OperationLog, Feedback, FileStorage, SessionLocal, SimpleUser
 from auth import (
     get_db, hash_password, verify_password, create_user,
@@ -344,6 +344,7 @@ async def process(
     user_info_text: str = Form(...),
     auth_token: Optional[str] = Form(None),  # 从表单获取token（保留兼容性）
     preview: Optional[str] = Form(None),  # 是否预览模式
+    check_only: Optional[str] = Form(None),  # 仅检查缺失/低置信度字段，不返回预览文档
     fill_data: Optional[str] = Form(None),  # 预览时返回的填充数据，下载时可直接使用
     db: Session = Depends(get_db),
     request: Request = None,
@@ -362,8 +363,11 @@ async def process(
         upload_docx = resolve_docx_upload(docx, docx_file)
         docx_bytes = await upload_docx.read()
 
-        # 上传文件到 Supabase Storage（仅在非预览模式下）
-        if preview != 'true':
+        is_preview_mode = str(preview).lower() == 'true'
+        is_check_only = str(check_only).lower() == 'true'
+
+        # 上传文件到 Supabase Storage（仅在下载模式下）
+        if not is_preview_mode and not is_check_only:
             # 1. 上传 DOCX 文件
             docx_filename = generate_unique_filename(upload_docx.filename, "docx_")
             docx_path = f"{username}/{docx_filename}"
@@ -434,13 +438,52 @@ async def process(
 
         # 处理文档（填充表单）
         # 优化：减少重复推理 - 预览时返回 fill_data，下载时可以使用
-        if preview == 'true':
+        if is_check_only:
+            # 轻量检查模式：只返回字段缺失/低置信度，不返回预览文档
+            _, returned_fill_data, missing_fields, metadata = fill_form(
+                docx_bytes,
+                user_info_text,
+                None,
+                return_fill_data=True,
+                return_metadata=True,
+            )
+            low_confidence_fields = metadata.get("low_confidence_fields", []) if isinstance(metadata, dict) else []
+
+            if missing_fields or low_confidence_fields:
+                message = (
+                    f"检查完成：缺失字段 {len(missing_fields)} 个，"
+                    f"低置信度字段 {len(low_confidence_fields)} 个"
+                )
+            else:
+                message = "检查完成，未发现需要补充的字段"
+
+            return {
+                "success": True,
+                "mode": "check",
+                "missing_fields": missing_fields,
+                "low_confidence_fields": low_confidence_fields,
+                "fill_data": json.dumps(returned_fill_data),
+                "message": message,
+            }
+
+        if is_preview_mode:
             # 预览模式：返回填充数据
+            prefilled_data = None
+            if fill_data and fill_data.strip():
+                try:
+                    parsed_fill_data = json.loads(fill_data)
+                    if isinstance(parsed_fill_data, dict):
+                        prefilled_data = parsed_fill_data
+                        print("📝 预览模式复用 fill_data（跳过 AI 推理）")
+                except Exception as parse_error:
+                    print(f"⚠️ 预览模式 fill_data 解析失败，回退到 AI 推理: {parse_error}")
+
             output_bytes, returned_fill_data, missing_fields, metadata = fill_form(
                 docx_bytes,
                 user_info_text,
                 None,
                 return_fill_data=True,
+                prefilled_data=prefilled_data,
                 return_metadata=True,
             )
             low_confidence_fields = metadata.get("low_confidence_fields", []) if isinstance(metadata, dict) else []
@@ -468,26 +511,26 @@ async def process(
                 "low_confidence_fields": low_confidence_fields,
                 "message": message
             }
-        else:
-            # 下载模式：如果有 fill_data，直接复用预览结果，避免重复 AI 推理
-            if fill_data and fill_data.strip():
-                try:
-                    prefilled_data = json.loads(fill_data)
-                    if isinstance(prefilled_data, dict):
-                        print("📝 使用预览阶段 fill_data 直接填充文档（跳过 AI 推理）")
-                        output_bytes = fill_form(docx_bytes, user_info_text, None, prefilled_data=prefilled_data)
-                    else:
-                        print("⚠️ fill_data 不是字典，回退到 AI 推理")
-                        output_bytes = fill_form(docx_bytes, user_info_text, None)
-                except Exception as parse_error:
-                    print(f"⚠️ fill_data 解析失败，回退到 AI 推理: {parse_error}")
-                    output_bytes = fill_form(docx_bytes, user_info_text, None)
-            else:
-                # 没有 fill_data，调用 AI 推理
-                output_bytes = fill_form(docx_bytes, user_info_text, None)
 
-        # 如果是Token用户，只有在首次下载文件时扣减余额（预览模式和重复下载不扣减）
-        if user_type == "token" and preview != 'true' and not fill_data:
+        # 下载模式：如果有 fill_data，直接复用预览结果，避免重复 AI 推理
+        if fill_data and fill_data.strip():
+            try:
+                prefilled_data = json.loads(fill_data)
+                if isinstance(prefilled_data, dict):
+                    print("📝 使用预览阶段 fill_data 直接填充文档（跳过 AI 推理）")
+                    output_bytes = fill_form(docx_bytes, user_info_text, None, prefilled_data=prefilled_data)
+                else:
+                    print("⚠️ fill_data 不是字典，回退到 AI 推理")
+                    output_bytes = fill_form(docx_bytes, user_info_text, None)
+            except Exception as parse_error:
+                print(f"⚠️ fill_data 解析失败，回退到 AI 推理: {parse_error}")
+                output_bytes = fill_form(docx_bytes, user_info_text, None)
+        else:
+            # 没有 fill_data，调用 AI 推理
+            output_bytes = fill_form(docx_bytes, user_info_text, None)
+
+        # 如果是Token用户，只有在首次下载文件时扣减余额（预览/检查模式和重复下载不扣减）
+        if user_type == "token" and not is_preview_mode and not fill_data:
             user.balance -= 1
             db.commit()
             print(f"💰 Token用户 {username} 余额剩余: {user.balance}")
@@ -522,20 +565,30 @@ async def analyze_missing(
     auth_result: dict = Depends(get_optional_current_user)
 ):
     """
-    分析模板和个人信息，返回可能缺失的字段列表
-    这是一个轻量级检测，不需要完整认证
+    分析模板和个人信息，返回缺失/低置信度字段列表
+    使用与预览一致的填充逻辑，避免口径不一致
     """
     try:
         upload_docx = resolve_docx_upload(docx, docx_file)
         docx_bytes = await upload_docx.read()
 
-        # 调用分析函数
-        missing_fields = analyze_missing_fields(docx_bytes, user_info_text)
+        _, _, missing_fields, metadata = fill_form(
+            docx_bytes,
+            user_info_text,
+            None,
+            return_fill_data=True,
+            return_metadata=True,
+        )
+        low_confidence_fields = metadata.get("low_confidence_fields", []) if isinstance(metadata, dict) else []
 
         return {
             "success": True,
             "missing_fields": missing_fields,
-            "message": f"发现 {len(missing_fields)} 个可能缺失的字段" if missing_fields else "未发现明显缺失的字段"
+            "low_confidence_fields": low_confidence_fields,
+            "message": (
+                f"检查完成：缺失字段 {len(missing_fields)} 个，"
+                f"低置信度字段 {len(low_confidence_fields)} 个"
+            )
         }
     except Exception as e:
         print(f"❌ 分析缺失字段 API 错误: {e}")
