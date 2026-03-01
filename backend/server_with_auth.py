@@ -42,6 +42,14 @@ BUCKET_MAP = {
 }
 
 
+def resolve_docx_upload(docx: Optional[UploadFile], docx_file: Optional[UploadFile]) -> UploadFile:
+    """兼容新旧上传字段：优先 docx，其次 docx_file。"""
+    upload = docx or docx_file
+    if not upload:
+        raise HTTPException(status_code=422, detail="缺少 docx 文件，请使用字段 docx")
+    return upload
+
+
 def cleanup_expired_files(db: Session):
     """删除超过保留期的文件记录与远端文件（默认24小时）"""
     cutoff = datetime.utcnow() - timedelta(hours=FILE_RETENTION_HOURS)
@@ -311,7 +319,8 @@ async def get_authenticated_user(
 
 @app.post("/api/process")
 async def process(
-    docx: UploadFile = File(...),
+    docx: Optional[UploadFile] = File(None),
+    docx_file: Optional[UploadFile] = File(None),
     user_info_text: str = Form(...),
     auth_token: Optional[str] = Form(None),  # 从表单获取token（保留兼容性）
     preview: Optional[str] = Form(None),  # 是否预览模式
@@ -330,18 +339,19 @@ async def process(
         username = auth_result["username"]
 
         maybe_cleanup_expired_files(db)
-        docx_bytes = await docx.read()
+        upload_docx = resolve_docx_upload(docx, docx_file)
+        docx_bytes = await upload_docx.read()
 
         # 上传文件到 Supabase Storage（仅在非预览模式下）
         if preview != 'true':
             # 1. 上传 DOCX 文件
-            docx_filename = generate_unique_filename(docx.filename, "docx_")
+            docx_filename = generate_unique_filename(upload_docx.filename, "docx_")
             docx_path = f"{username}/{docx_filename}"
             docx_url = upload_file_to_supabase(
                 docx_bytes,
                 "docx-files",
                 docx_path,
-                docx.content_type
+                upload_docx.content_type
             )
 
             # 2. 上传用户信息文件（保存为 txt）
@@ -357,7 +367,7 @@ async def process(
 
             # 准备提交数据
             submitted_data = {
-                "docx_filename": docx.filename,
+                "docx_filename": upload_docx.filename,
                 "docx_size": len(docx_bytes),
                 "docx_url": docx_url,
                 "user_info_preview": user_info_text[:500] + "..." if len(user_info_text) > 500 else user_info_text,
@@ -370,7 +380,7 @@ async def process(
                 db,
                 username,
                 "提交文档处理",
-                details=f"文件名: {docx.filename}, 用户类型: {user_type}",
+                details=f"文件名: {upload_docx.filename}, 用户类型: {user_type}",
                 submitted_data=submitted_data,
                 ip_address=request.client.host if request else None
             )
@@ -380,11 +390,11 @@ async def process(
             db.add(FileStorage(
                 username=username,
                 file_type="docx",
-                original_filename=docx.filename,
+                original_filename=upload_docx.filename,
                 file_path=docx_path,
                 public_url=docx_url,
                 file_size=len(docx_bytes),
-                content_type=docx.content_type,
+                content_type=upload_docx.content_type,
                 operation_log_id=log_id
             ))
 
@@ -407,6 +417,15 @@ async def process(
         if preview == 'true':
             # 预览模式：返回填充数据
             output_bytes, returned_fill_data, missing_fields = fill_form(docx_bytes, user_info_text, None, return_fill_data=True)
+
+            # 兜底：若填充结果出现空值但未返回缺失字段，再做一次轻量缺失分析
+            if not missing_fields and isinstance(returned_fill_data, dict):
+                has_empty_value = any(str(v).strip() == "" for v in returned_fill_data.values())
+                if has_empty_value:
+                    fallback_missing_fields = analyze_missing_fields(docx_bytes, user_info_text)
+                    if fallback_missing_fields:
+                        missing_fields = fallback_missing_fields
+
             import base64
             output_base64 = base64.b64encode(output_bytes).decode('utf-8')
 
@@ -475,7 +494,8 @@ async def process(
 
 @app.post("/api/analyze-missing")
 async def analyze_missing(
-    docx: UploadFile = File(...),
+    docx: Optional[UploadFile] = File(None),
+    docx_file: Optional[UploadFile] = File(None),
     user_info_text: str = Form(...),
     auth_result: dict = Depends(get_optional_current_user)
 ):
@@ -484,7 +504,8 @@ async def analyze_missing(
     这是一个轻量级检测，不需要完整认证
     """
     try:
-        docx_bytes = await docx.read()
+        upload_docx = resolve_docx_upload(docx, docx_file)
+        docx_bytes = await upload_docx.read()
 
         # 调用分析函数
         missing_fields = analyze_missing_fields(docx_bytes, user_info_text)
@@ -500,7 +521,8 @@ async def analyze_missing(
 
 @app.post("/api/audit-template")
 async def audit_template_api(
-    docx: UploadFile = File(...),
+    docx: Optional[UploadFile] = File(None),
+    docx_file: Optional[UploadFile] = File(None),
     user_info_text: str = Form(...),
     auth_result: dict = Depends(get_optional_current_user)
 ):
@@ -509,7 +531,8 @@ async def audit_template_api(
     返回每个占位符的匹配状态和值
     """
     try:
-        docx_bytes = await docx.read()
+        upload_docx = resolve_docx_upload(docx, docx_file)
+        docx_bytes = await upload_docx.read()
 
         # 调用审核函数
         result = audit_template(docx_bytes, user_info_text)
