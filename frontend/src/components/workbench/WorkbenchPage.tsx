@@ -202,13 +202,13 @@ export function WorkbenchPage() {
       setInfoFile(file)
       setInfoFileName(file.name)
       setLoading(true)
-      
+
       try {
         if (file.name.endsWith('.pdf')) {
           const pdfjsLib = await import('pdfjs-dist')
           // Set worker source dynamically
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
-          
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`
+
           const arrayBuffer = await file.arrayBuffer()
           const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
           let fullText = ""
@@ -398,23 +398,16 @@ export function WorkbenchPage() {
         setProgressStep(3)
         setLatestFillData(response.fill_data || '')
 
-        const responseMissingFields = response.missing_fields || []
-        const responseLowConfidenceFields = response.low_confidence_fields || []
-        const hasFieldsNeedSupplement =
-          responseMissingFields.length > 0 || responseLowConfidenceFields.length > 0
-
-        if (hasFieldsNeedSupplement) {
-          setMissingFields(responseMissingFields)
-          setLowConfidenceFields(responseLowConfidenceFields)
-          setPreviewBlob(null)
-          setCurrentStep(3)
-          toast.info(response.message || '仍有字段缺失，请继续补充后再生成')
-        } else if (response.data) {
+        if (response.data) {
           setPreviewBlob(base64ToBlob(response.data))
           setPreviewScale(1)
-          setMissingFields([])  // 清空缺失字段
-          setLowConfidenceFields([])
           setCurrentStep(4)  // 跳转到 Step 4
+
+          if ((response.missing_fields?.length ?? 0) > 0) {
+            toast.info(`已生成预览，但可能仍有未匹配字段信息。`)
+          } else {
+            toast.success("预览生成成功")
+          }
         } else {
           toast.error(response.message || '预览数据为空，请重试')
         }
@@ -729,17 +722,37 @@ export function WorkbenchPage() {
                       )}
 
                       {hasSupplementFields ? (
-                        <div className="supplement-form">
-                          <textarea
-                            value={supplementaryInfo}
-                            onChange={(e) => setSupplementaryInfo(e.target.value)}
-                            className="input textarea code-editor large-textarea"
-                            placeholder={generateMissingFieldsPlaceholder()}
-                            spellCheck={false}
-                          />
-                          <p className="form-hint">
-                            请按照「字段: 内容」的格式填写，例如：身高: 175cm
-                          </p>
+                        <div className="supplement-form flex flex-col gap-4 mt-6">
+                          {Array.from(new Set([...missingFields, ...lowConfidenceFields])).map((field) => {
+                            const escapedField = field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                            const regex = new RegExp(`^\\s*${escapedField}\\s*:\\s*(.*)$`, 'm');
+                            const match = supplementaryInfo.match(regex);
+                            const val = match ? match[1] : '';
+                            const displayField = field.match(/^{\d+}$/) ? `简历补充项 (模板位置 ${field})` : field;
+
+                            return (
+                              <div key={field} className="flex flex-col gap-2">
+                                <label className="text-sm font-semibold text-slate-700 ml-1">{displayField}</label>
+                                <input
+                                  type="text"
+                                  value={val}
+                                  onChange={(e) => {
+                                    const newVal = e.target.value;
+                                    let newInfo = supplementaryInfo;
+                                    if (match) {
+                                      newInfo = supplementaryInfo.replace(regex, `${field}: ${newVal}`);
+                                    } else {
+                                      const append = `\n${field}: ${newVal}`;
+                                      newInfo = supplementaryInfo + append;
+                                    }
+                                    setSupplementaryInfo(newInfo.trim());
+                                  }}
+                                  className="w-full bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 rounded-lg px-4 py-3 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-colors"
+                                  placeholder={`请输入 ${displayField}`}
+                                />
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
                         <div className="no-missing-fields">
