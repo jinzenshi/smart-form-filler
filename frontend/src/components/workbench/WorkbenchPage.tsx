@@ -926,7 +926,7 @@ export function WorkbenchPage() {
         }
 
         .logo-icon {
-          color: #d97706;
+          color: #4338ca;
         }
 
         .header-right {
@@ -945,7 +945,7 @@ export function WorkbenchPage() {
           width: 36px;
           height: 36px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #f59e0b, #92400e);
+          background: linear-gradient(135deg, #4f46e5, #312e81);
           color: white;
           display: flex;
           align-items: center;
@@ -961,8 +961,8 @@ export function WorkbenchPage() {
 
         .balance-badge {
           padding: 4px 12px;
-          background: #fef3c7;
-          color: #92400e;
+          background: #e0e7ff;
+          color: #312e81;
           border-radius: 9999px;
           font-size: 12px;
           font-weight: 600;
@@ -1061,7 +1061,7 @@ export function WorkbenchPage() {
         }
 
         .panel-icon {
-          color: #d97706;
+          color: #4338ca;
         }
 
         .panel-body {
@@ -1085,7 +1085,7 @@ export function WorkbenchPage() {
           width: 28px;
           height: 28px;
           border-radius: 50%;
-          background: linear-gradient(135deg, #f59e0b, #d97706);
+          background: linear-gradient(135deg, #4f46e5, #4338ca);
           color: white;
           display: flex;
           align-items: center;
@@ -1107,7 +1107,7 @@ export function WorkbenchPage() {
         }
 
         .file-upload-area {
-          border: 2px dashed #fbbf24;
+          border: 2px dashed #6366f1;
           border-radius: 8px;
           padding: 20px;
           text-align: center;
@@ -1117,8 +1117,8 @@ export function WorkbenchPage() {
         }
 
         .file-upload-area:hover {
-          border-color: #f59e0b;
-          background: #fef3c7;
+          border-color: #4f46e5;
+          background: #e0e7ff;
         }
 
         .file-upload-area input {
@@ -1154,7 +1154,7 @@ export function WorkbenchPage() {
         .file-note {
           margin-top: 8px;
           font-size: 13px;
-          color: #d97706;
+          color: #4338ca;
         }
 
         .info-tabs {
@@ -1176,7 +1176,7 @@ export function WorkbenchPage() {
         }
 
         .tab-btn.active {
-          color: #d97706;
+          color: #4338ca;
         }
 
         .tab-btn.active::after {
@@ -1186,7 +1186,7 @@ export function WorkbenchPage() {
           left: 0;
           right: 0;
           height: 2px;
-          background: #f59e0b;
+          background: #4f46e5;
         }
 
         .tab-content {
@@ -1253,11 +1253,11 @@ export function WorkbenchPage() {
         }
 
         .wizard-step:hover {
-          background: #fef3c7;
+          background: #e0e7ff;
         }
 
         .wizard-step.active {
-          background: #fef3c7;
+          background: #e0e7ff;
         }
 
         .wizard-step-icon {
@@ -1276,8 +1276,8 @@ export function WorkbenchPage() {
         }
 
         .wizard-step.active .wizard-step-icon {
-          background: linear-gradient(135deg, #f59e0b, #d97706);
-          border-color: #f59e0b;
+          background: linear-gradient(135deg, #4f46e5, #4338ca);
+          border-color: #4f46e5;
           color: white;
         }
 
@@ -1307,7 +1307,7 @@ export function WorkbenchPage() {
         }
 
         .wizard-connector.active {
-          background: #f59e0b;
+          background: #4f46e5;
         }
 
         /* Wizard Content */
@@ -1353,7 +1353,7 @@ export function WorkbenchPage() {
           gap: 10px;
           padding: 14px 16px;
           background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
-          border: 1px solid #fbbf24;
+          border: 1px solid #6366f1;
           border-radius: 8px;
           margin-bottom: 20px;
         }
@@ -1366,7 +1366,7 @@ export function WorkbenchPage() {
         .supplement-hint p {
           margin: 0;
           font-size: 14px;
-          color: #92400e;
+          color: #312e81;
           line-height: 1.5;
         }
 
@@ -1456,7 +1456,7 @@ export function WorkbenchPage() {
           margin-top: 12px;
           padding: 16px;
           background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
-          border: 1px solid #fbbf24;
+          border: 1px solid #6366f1;
           border-radius: 8px;
         }
 
@@ -1469,7 +1469,7 @@ export function WorkbenchPage() {
 
         .warning-title {
           font-weight: 600;
-          color: #92400e;
+          color: #312e81;
           font-size: 15px;
         }
 
@@ -1483,7 +1483,7 @@ export function WorkbenchPage() {
           position: relative;
           padding-left: 20px;
           padding-bottom: 4px;
-          color: #d97706;
+          color: #4338ca;
           font-size: 14px;
         }
 
@@ -1491,14 +1491,14 @@ export function WorkbenchPage() {
           content: '•';
           position: absolute;
           left: 8px;
-          color: #f59e0b;
+          color: #4f46e5;
         }
 
         /* 旧的样式已注释，改为 panel-footer-warning
         .missing-fields-below-preview {
           padding: 16px;
           background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(251, 191, 36, 0.05) 100%);
-          border: 1px solid #fbbf24;
+          border: 1px solid #6366f1;
           border-radius: 0 0 8px 8px;
           border-top: none;
         }
@@ -1506,7 +1506,7 @@ export function WorkbenchPage() {
 
         .panel-footer-warning {
           padding: 16px 24px;
-          background: #fffbeb;
+          background: #c7d2fe;
           border-top: 1px solid #fcd34d;
           width: 100%;
           box-sizing: border-box;
@@ -1686,8 +1686,8 @@ export function WorkbenchPage() {
         }
 
         .progress-step.active .progress-step-icon {
-          background: #f59e0b;
-          border-color: #f59e0b;
+          background: #4f46e5;
+          border-color: #4f46e5;
           color: white;
         }
 
@@ -1737,7 +1737,7 @@ export function WorkbenchPage() {
           width: 40px;
           height: 40px;
           border: 3px solid #e5e5e5;
-          border-top-color: #f59e0b;
+          border-top-color: #4f46e5;
           border-radius: 50%;
           animation: spin 1s linear infinite;
         }
