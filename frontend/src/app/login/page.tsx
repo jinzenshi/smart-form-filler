@@ -49,7 +49,7 @@ export default function LoginPage() {
               <path d="M33 36h6M36 33v6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           </div>
-          <h1 className="brand-title">文档工坊</h1>
+          <h1 className="brand-title">SmartFiller</h1>
           <p className="brand-subtitle">智能填表 · 高效文档 · 优雅工作</p>
 
           <ul className="feature-list">
