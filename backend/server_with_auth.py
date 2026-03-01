@@ -418,14 +418,6 @@ async def process(
             # 预览模式：返回填充数据
             output_bytes, returned_fill_data, missing_fields = fill_form(docx_bytes, user_info_text, None, return_fill_data=True)
 
-            # 兜底：若填充结果出现空值但未返回缺失字段，再做一次轻量缺失分析
-            if not missing_fields and isinstance(returned_fill_data, dict):
-                has_empty_value = any(str(v).strip() == "" for v in returned_fill_data.values())
-                if has_empty_value:
-                    fallback_missing_fields = analyze_missing_fields(docx_bytes, user_info_text)
-                    if fallback_missing_fields:
-                        missing_fields = fallback_missing_fields
-
             import base64
             output_base64 = base64.b64encode(output_bytes).decode('utf-8')
 
