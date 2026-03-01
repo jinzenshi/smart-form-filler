@@ -252,7 +252,8 @@ def analyze_missing_fields(docx_bytes, user_info_text):
     try:
         response = requests.post(url, headers=headers, json=data)
         if response.status_code != 200:
-            print(f"❌ AI API 返回错误状态码: {response.status_code}")
+            key_prefix = api_key[:5] + "..." if api_key else "NOT_SET"
+            print(f"❌ AI API (推断字段) 返回错误状态码: {response.status_code}, Key: {key_prefix}, 详细信息: {response.text}")
             return []
 
         res_json = response.json()
@@ -409,7 +410,8 @@ def audit_template(docx_bytes, user_info_text):
     try:
         response = requests.post(url, headers=headers, json=data)
         if response.status_code != 200:
-            print(f"❌ AI API 返回错误: {response.status_code}")
+            key_prefix = api_key[:5] + "..." if api_key else "NOT_SET"
+            print(f"❌ AI API (分析缺失字段) 返回错误: {response.status_code}, Key: {key_prefix}, 详细信息: {response.text}")
             return {"success": False, "error": f"API error: {response.status_code}", "items": []}
 
         res_json = response.json()
@@ -494,6 +496,8 @@ def get_modelscope_response(user_info, markdown_context):
     try:
         response = requests.post(url, headers=headers, json=data)
         if response.status_code != 200:
+            key_prefix = api_key[:5] + "..." if api_key else "NOT_SET"
+            print(f"❌ AI API (内容填充) 返回错误: {response.status_code}, Key: {key_prefix}, 详细信息: {response.text}")
             return {}
 
         res_json = response.json()
