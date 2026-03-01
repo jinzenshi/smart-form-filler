@@ -24,7 +24,7 @@ export default function LoginPage() {
         // Store auth data in localStorage (works reliably on Vercel)
         setAuthData(result.token, result.username || username)
         // Redirect to workbench home
-        router.push('/')
+        router.push('/workspace')
         router.refresh()
       } else {
         setError(result.error || '登录失败')
@@ -43,10 +43,10 @@ export default function LoginPage() {
         <div className="brand-section">
           <div className="brand-logo">
             <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="6" y="8" width="32" height="36" rx="3" stroke="currentColor" strokeWidth="2.5" fill="none"/>
-              <path d="M14 16h16M14 22h12M14 28h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              <circle cx="36" cy="36" r="8" fill="currentColor"/>
-              <path d="M33 36h6M36 33v6" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              <rect x="6" y="8" width="32" height="36" rx="3" stroke="currentColor" strokeWidth="2.5" fill="none" />
+              <path d="M14 16h16M14 22h12M14 28h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="36" cy="36" r="8" fill="currentColor" />
+              <path d="M33 36h6M36 33v6" stroke="white" strokeWidth="2" strokeLinecap="round" />
             </svg>
           </div>
           <h1 className="brand-title">SmartFiller</h1>

@@ -196,17 +196,50 @@ export function WorkbenchPage() {
     }
   }
 
-  function handleInfoSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleInfoSelect(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (file) {
       setInfoFile(file)
       setInfoFileName(file.name)
-      // 读取文件内容
-      const reader = new FileReader()
-      reader.onload = (ev) => {
-        setUserInfo(ev.target?.result as string)
+      setLoading(true)
+      
+      try {
+        if (file.name.endsWith('.pdf')) {
+          const pdfjsLib = await import('pdfjs-dist')
+          // Set worker source dynamically
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
+          
+          const arrayBuffer = await file.arrayBuffer()
+          const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
+          let fullText = ""
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i)
+            const content = await page.getTextContent()
+            const strings = content.items.map((item: any) => item.str)
+            fullText += strings.join(" ") + "\n"
+          }
+          setUserInfo(fullText)
+        } else if (file.name.endsWith('.docx')) {
+          // Support DOCX via mammoth browser
+          const mammothModule = await import('mammoth/mammoth.browser')
+          const mammoth = mammothModule.default || mammothModule
+          const arrayBuffer = await file.arrayBuffer()
+          const result = await mammoth.extractRawText({ arrayBuffer })
+          setUserInfo(result.value)
+        } else {
+          // fallback to text
+          const reader = new FileReader()
+          reader.onload = (ev) => {
+            setUserInfo(ev.target?.result as string)
+          }
+          reader.readAsText(file)
+        }
+      } catch (err: any) {
+        console.error("Document Extractor Error: ", err)
+        toast.error("文件解析失败: " + err.message)
+      } finally {
+        setLoading(false)
       }
-      reader.readAsText(file)
     }
   }
 
@@ -582,13 +615,13 @@ export function WorkbenchPage() {
                           <input
                             ref={infoInputRef}
                             type="file"
-                            accept=".txt,.md,.markdown"
+                            accept=".txt,.md,.markdown,.pdf,.docx"
                             onChange={handleInfoSelect}
                           />
                           <div className="upload-content">
                             <span className="upload-icon">📋</span>
                             <span className="upload-text">{infoFileName || '点击上传个人信息文件'}</span>
-                            <span className="upload-hint">支持 .txt .md 格式</span>
+                            <span className="upload-hint">支持 .pdf .docx .txt .md 格式</span>
                           </div>
                         </div>
                       </div>
