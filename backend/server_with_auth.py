@@ -22,10 +22,11 @@ from supabase_client import upload_file_to_supabase, delete_file_from_supabase, 
 
 app = FastAPI(title="智能填表系统")
 
-# CORS 中间件：允许 Vercel 前端跨域访问
+# CORS 中间件：仅允许特定域名跨域访问
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "https://smart-form-filler-pi.vercel.app,http://localhost:3000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 允许所有域名，生产环境可限制为具体域名
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

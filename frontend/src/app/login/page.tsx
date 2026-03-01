@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { loginAction } from './actions'
 import { setAuthData } from '@/lib/auth-client'
 
@@ -125,7 +126,7 @@ export default function LoginPage() {
             </div>
 
             <p className="register-link">
-              没有账户？<a href="#">免费注册</a>
+              没有账户？<Link href="/register">免费注册</Link>
             </p>
           </div>
         </div>
