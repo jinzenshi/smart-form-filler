@@ -85,7 +85,7 @@ def _collect_explicit_profile_values(user_info_text):
     return explicit_values
 
 
-def _is_explicit_value(value, explicit_values):
+def _is_explicit_value(value, explicit_values, raw_text=""):
     normalized_value = re.sub(r"\s+", "", str(value or "")).strip()
     if not normalized_value:
         return False
@@ -101,6 +101,13 @@ def _is_explicit_value(value, explicit_values):
         if len(explicit) <= 1:
             continue
         if normalized_value in explicit or explicit in normalized_value:
+            return True
+
+    # 回退检查：在原始用户文本中直接搜索（去除空格后匹配）
+    # 解决 PDF 提取的流式文本无法被解析为 key:value 对的问题
+    if raw_text:
+        normalized_raw = re.sub(r"\s+", "", raw_text)
+        if len(normalized_value) >= 2 and normalized_value in normalized_raw:
             return True
 
     return False
@@ -696,7 +703,7 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
             cell = placeholder_map[target_key]
 
             normalized_value = "" if value is None else str(value).strip()
-            if normalized_value and not _is_explicit_value(normalized_value, explicit_profile_values):
+            if normalized_value and not _is_explicit_value(normalized_value, explicit_profile_values, normalized_user_info_text):
                 print(f"⚠️ 低置信度值已清空: {target_key} -> {normalized_value}")
                 low_confidence_keys.add(target_key)
                 normalized_value = ""
