@@ -106,7 +106,7 @@ export function WorkbenchPage() {
 
   // 是否可以预览
   const canPreview = (docxFile || defaultTemplateBlob) && (userInfo.trim() || infoFile)
-  
+
 
   function handleZoomIn() {
     setPreviewScale((prev) => Math.min(2, Number((prev + 0.1).toFixed(2))))
@@ -281,21 +281,15 @@ export function WorkbenchPage() {
         setProgressStep(3)
         setLatestFillData(response.fill_data || '')
 
-        const responseMissingFields = response.missing_fields || []
-        const responseLowConfidenceFields = response.low_confidence_fields || []
-        const hasFieldsNeedSupplement =
-          responseMissingFields.length > 0 || responseLowConfidenceFields.length > 0
-
-        if (hasFieldsNeedSupplement) {
-          setMissingFields(responseMissingFields)
-          setLowConfidenceFields(responseLowConfidenceFields)
-                setPreviewBlob(null)
-          setCurrentStep(3)
-          toast.info(response.message || '检测到部分字段缺失，请先补充信息')
-        } else if (response.data) {
+        if (response.data) {
           setPreviewBlob(base64ToBlob(response.data))
           setPreviewScale(1)
-                      setCurrentStep(3)
+          setCurrentStep(3)
+          if ((response.missing_fields?.length ?? 0) > 0) {
+            toast.info(`已生成预览，但可能仍有未匹配字段信息。`)
+          } else {
+            toast.success("预览生成成功")
+          }
         } else {
           toast.error(response.message || '预览数据为空，请重试')
         }
@@ -310,16 +304,7 @@ export function WorkbenchPage() {
     }
   }
 
-  // 生成缺失字段的 placeholder 提示
-  function generateMissingFieldsPlaceholder(): string {
-    const combinedFields = [
-      ...missingFields,
-      ...lowConfidenceFields.filter((field) => !missingFields.includes(field))
-    ]
 
-    if (combinedFields.length === 0) return ''
-    return combinedFields.map((field) => `${field}: `).join('\n')
-  }
 
   // 从第二步开始：直接生成预览
   async function handleStartFill() {
@@ -400,13 +385,6 @@ export function WorkbenchPage() {
   }
 
   function goToStep3() {
-    // 只有存在可补充字段时才允许跳转到 Step 3
-    if (missingFields.length > 0 || lowConfidenceFields.length > 0) {
-      setCurrentStep(3)
-    }
-  }
-
-  function goToStep4() {
     // 如果已经有预览结果，直接跳转到预览页面
     if (previewBlob) {
       setCurrentStep(3)
@@ -482,7 +460,7 @@ export function WorkbenchPage() {
                   <span className="panel-icon">✎</span>
                   {currentStep === 1 && '填写个人信息'}
                   {currentStep === 2 && '上传报名表'}
-                  
+
                 </h2>
               </div>
 
