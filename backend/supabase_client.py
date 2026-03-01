@@ -9,13 +9,28 @@ import os
 from supabase import create_client, Client
 from datetime import datetime
 
-# Supabase 配置 - 美国西部项目（us-west-2）
-SUPABASE_URL = "https://uwajqrjmamoaccslzrzo.supabase.co"
-# 使用正确的 service_role key
-SUPABASE_SERVICE_ROLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3YWpxcmptYW1vYWNjc2x6cnpvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2NjUwMjQ1NSwiZXhwIjoyMDgyMDc4NDU1fQ.Cd_Kivew6-R0dmgDAN1tE0nYYHgvZrb3mr84wJvXukQ"
+# Supabase 配置（必须由环境变量注入）
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
+SUPABASE_SERVICE_ROLE_KEY = (
+    os.getenv("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    or os.getenv("SUPABASE_KEY", "").strip()
+)
 
 # 创建 Supabase 客户端（使用 service_role key）
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+supabase: Client | None = None
+if SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY:
+    supabase = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+else:
+    print(
+        "⚠️ Missing Supabase credentials: set SUPABASE_URL and "
+        "SUPABASE_SERVICE_ROLE_KEY to enable file storage"
+    )
+
+
+def _require_supabase_client() -> Client:
+    if not supabase:
+        raise Exception("Supabase 未配置，无法执行文件存储操作")
+    return supabase
 
 def upload_file_to_supabase(file_content: bytes, bucket_name: str, file_path: str, content_type: str = None) -> str:
     """
@@ -31,8 +46,10 @@ def upload_file_to_supabase(file_content: bytes, bucket_name: str, file_path: st
         公共访问 URL
     """
     try:
+        client = _require_supabase_client()
+
         # 上传文件到指定bucket
-        bucket = supabase.storage.from_(bucket_name)
+        bucket = client.storage.from_(bucket_name)
 
         # 构建文件选项
         file_options = {}
@@ -81,7 +98,8 @@ def delete_file_from_supabase(bucket_name: str, file_path: str) -> bool:
         是否删除成功
     """
     try:
-        response = supabase.storage.from_(bucket_name).remove([file_path])
+        client = _require_supabase_client()
+        response = client.storage.from_(bucket_name).remove([file_path])
         return True
     except Exception as e:
         print(f"文件删除失败: {e}")
@@ -99,7 +117,8 @@ def get_file_info(bucket_name: str, file_path: str) -> dict:
         文件信息字典
     """
     try:
-        bucket = supabase.storage.from_(bucket_name)
+        client = _require_supabase_client()
+        bucket = client.storage.from_(bucket_name)
         response = bucket.list(file_path.split('/')[:-1])
         for item in response:
             if item['name'] == file_path.split('/')[-1]:

@@ -131,23 +131,31 @@ def init_db():
         Base.metadata.create_all(bind=engine)
         print(f"✅ 数据库表创建成功！连接类型: {'PostgreSQL' if DATABASE_URL.startswith('postgresql') else 'SQLite'}")
 
-        # 创建默认管理员账户
+        # 可选创建管理员账户（由环境变量控制，避免硬编码弱口令）
         db = SessionLocal()
         try:
-            admin = db.query(User).filter(User.username == 'admin').first()
-            if not admin:
-                # 导入加密函数
+            admin_username = os.getenv("DEFAULT_ADMIN_USERNAME", "").strip()
+            admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "").strip()
+
+            existing_admin = db.query(User).filter(User.is_admin.is_(True)).first()
+            if existing_admin:
+                print("ℹ️ 管理员账户已存在")
+            elif admin_username and admin_password:
                 from auth import hash_password
+
                 admin_user = User(
-                    username='admin',
-                    password=hash_password('admin123'),
+                    username=admin_username,
+                    password=hash_password(admin_password),
                     is_admin=True
                 )
                 db.add(admin_user)
                 db.commit()
-                print("✅ 默认管理员账户创建成功: admin / admin123")
+                print(f"✅ 已通过环境变量创建管理员账户: {admin_username}")
             else:
-                print("ℹ️ 管理员账户已存在")
+                print(
+                    "⚠️ 未找到管理员账户，且未配置 DEFAULT_ADMIN_USERNAME/DEFAULT_ADMIN_PASSWORD，"
+                    "已跳过默认管理员创建"
+                )
         except Exception as e:
             print(f"⚠️ 创建管理员账户失败: {e}")
             db.rollback()

@@ -9,13 +9,22 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from models import User, SessionLocal, OperationLog
 from typing import Optional
+import base64
+import json
+import os
 import secrets
 import hashlib
 import hmac
+import time
 from datetime import datetime, timedelta, timezone
 
-# 简单的密码加密（生产环境建议使用更安全的方法）
-SECRET_KEY = "your-secret-key-change-in-production"
+# 密钥配置（优先使用环境变量，未配置时使用进程临时密钥）
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "").strip() or secrets.token_urlsafe(32)
+TOKEN_EXPIRE_SECONDS = int(os.getenv("AUTH_TOKEN_EXPIRE_SECONDS", str(7 * 24 * 3600)))
+
+if not os.getenv("JWT_SECRET_KEY"):
+    print("⚠️ JWT_SECRET_KEY 未配置，当前使用进程临时密钥，重启后令牌将失效")
+
 security = HTTPBearer()
 
 def get_db():
@@ -25,6 +34,45 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def _b64url_encode(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def _b64url_decode(value: str) -> bytes:
+    padding = "=" * (-len(value) % 4)
+    return base64.urlsafe_b64decode(value + padding)
+
+
+def _sign_payload(payload_b64: str) -> str:
+    return hmac.new(SECRET_KEY.encode(), payload_b64.encode(), hashlib.sha256).hexdigest()
+
+
+def _decode_token(token: str) -> dict:
+    try:
+        payload_b64, signature = token.split(".", 1)
+    except ValueError as exc:
+        raise HTTPException(status_code=401, detail="无效的认证凭据") from exc
+
+    expected_signature = _sign_payload(payload_b64)
+    if not hmac.compare_digest(signature, expected_signature):
+        raise HTTPException(status_code=401, detail="认证签名无效")
+
+    try:
+        payload = json.loads(_b64url_decode(payload_b64).decode())
+    except Exception as exc:
+        raise HTTPException(status_code=401, detail="令牌内容无效") from exc
+
+    exp = int(payload.get("exp", 0))
+    if exp <= int(time.time()):
+        raise HTTPException(status_code=401, detail="令牌已过期")
+
+    username = str(payload.get("sub", "")).strip()
+    if not username:
+        raise HTTPException(status_code=401, detail="令牌缺少用户信息")
+
+    return payload
+
 
 def hash_password(password: str) -> str:
     """加密密码"""
@@ -163,17 +211,12 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     )
 
     try:
-        # 简单的token验证（生产环境应使用JWT）
         token = credentials.credentials
-        if not token or len(token) < 3:
+        if not token:
             raise credentials_exception
 
-        # token格式: username:timestamp:random
-        parts = token.split(':')
-        if len(parts) != 3:
-            raise credentials_exception
-
-        username = parts[0]
+        payload = _decode_token(token)
+        username = str(payload.get("sub", "")).strip()
         user = db.query(User).filter(User.username == username).first()
 
         if user is None:
@@ -196,7 +239,14 @@ def is_admin(user: User = Depends(get_current_user)) -> User:
     return user
 
 def generate_token(username: str) -> str:
-    """生成简单的token"""
-    timestamp = str(int(datetime.utcnow().timestamp()))
-    random_str = secrets.token_hex(8)
-    return f"{username}:{timestamp}:{random_str}"
+    """生成签名令牌"""
+    now_ts = int(time.time())
+    payload = {
+        "sub": username,
+        "iat": now_ts,
+        "exp": now_ts + TOKEN_EXPIRE_SECONDS,
+        "nonce": secrets.token_hex(8),
+    }
+    payload_b64 = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode())
+    signature = _sign_payload(payload_b64)
+    return f"{payload_b64}.{signature}"
