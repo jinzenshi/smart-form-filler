@@ -232,7 +232,14 @@ export function WorkbenchPage() {
 
       if (response.success) {
         setProgressStep(3)
-        if (response.data) {
+
+        if (response.missing_fields && response.missing_fields.length > 0) {
+          setMissingFields(response.missing_fields)
+          setSupplementaryInfo('')
+          setPreviewBlob(null)
+          setCurrentStep(3)
+          toast.info(response.message || '检测到部分字段缺失，请先补充信息')
+        } else if (response.data) {
           setPreviewBlob(base64ToBlob(response.data))
           setCurrentStep(4)
         } else {
@@ -306,7 +313,13 @@ export function WorkbenchPage() {
 
       if (response.success) {
         setProgressStep(3)
-        if (response.data) {
+
+        if (response.missing_fields && response.missing_fields.length > 0) {
+          setMissingFields(response.missing_fields)
+          setPreviewBlob(null)
+          setCurrentStep(3)
+          toast.info(response.message || '仍有字段缺失，请继续补充后再生成')
+        } else if (response.data) {
           setPreviewBlob(base64ToBlob(response.data))
           setMissingFields([])  // 清空缺失字段
           setCurrentStep(4)  // 跳转到 Step 4
@@ -1369,8 +1382,8 @@ export function WorkbenchPage() {
         :global(.docx-wrapper) {
           background-color: transparent !important;
           padding: 0 !important;
-          width: fit-content !important;
-          min-width: 100% !important;
+          width: max-content !important;
+          min-width: auto !important;
           display: flex !important;
           flex-direction: column !important;
           align-items: center !important;
@@ -1384,8 +1397,8 @@ export function WorkbenchPage() {
         }
 
         .docx-preview-content {
-          width: fit-content;
-          min-width: 100%;
+          width: max-content;
+          min-width: max-content;
           border: none !important;
           outline: none !important;
           display: flex;
@@ -1636,6 +1649,18 @@ export function WorkbenchPage() {
 
           .preview-panel .panel-body {
             min-height: 320px;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          .docx-preview {
+            align-items: flex-start;
+            padding: 12px;
+          }
+
+          .docx-preview-content {
+            width: max-content;
+            min-width: max-content;
           }
         }
       `}</style>

@@ -8,6 +8,8 @@ interface ProcessResult {
   data?: string
   blob?: Blob
   balance?: number
+  missing_fields?: string[]
+  fill_data?: string
 }
 
 function authHeader(): Record<string, string> {

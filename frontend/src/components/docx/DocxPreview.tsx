@@ -48,7 +48,7 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
         await renderAsync(buffer, containerRef.current, containerRef.current, {
           className: 'docx-preview-wrapper',
           inWrapper: false,
-          ignoreWidth: true,
+          ignoreWidth: false,
           breakPages: true,
           useBase64URL: true,
         })

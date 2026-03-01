@@ -647,46 +647,62 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
     else:
         fill_data = get_modelscope_response(normalized_user_info_text, "\n".join(markdown_lines))
 
+    if not isinstance(fill_data, dict):
+        fill_data = {}
+
     # 4. 收集未填充的字段信息
-    missing_fields = []  # 存储未填充的字段（值为空或不存在）
-    placeholder_needs_ai_inference = {}  # 存储需要 AI 推断字段名称的占位符
+    missing_fields = []
+    missing_fields_seen = set()
+    placeholder_needs_ai_inference = {}
+    resolved_placeholders = set()
+
+    def register_missing(target_key):
+        header_info = placeholder_info.get(target_key, {})
+        header = (header_info.get("header") or "").strip()
+        if header:
+            if header not in missing_fields_seen:
+                missing_fields.append(header)
+                missing_fields_seen.add(header)
+        else:
+            pos_info = placeholder_info.get(target_key)
+            if pos_info and target_key not in placeholder_needs_ai_inference:
+                placeholder_needs_ai_inference[target_key] = {
+                    "table_index": pos_info.get("table_index", 0),
+                    "row_index": pos_info.get("row_index", 0),
+                    "col_index": pos_info.get("col_index", 0),
+                }
+        print(f"⚠️ 识别到缺失字段: {header if header else target_key} (占位符: {target_key})")
 
     # 4. 填充数据
-    if fill_data:
-        for key, value in fill_data.items():
-            # 兼容 AI 返回 "1" 而不是 "{1}" 的情况
-            target_key = key if key.startswith("{") else f"{{{key}}}"
-            if target_key in placeholder_map:
-                cell = placeholder_map[target_key]
+    for key, value in list(fill_data.items()):
+        # 兼容 AI 返回 "1" 而不是 "{1}" 的情况
+        target_key = key if key.startswith("{") else f"{{{key}}}"
+        if target_key in placeholder_map:
+            resolved_placeholders.add(target_key)
+            cell = placeholder_map[target_key]
 
-                normalized_value = "" if value is None else str(value).strip()
-                if normalized_value and not _is_explicit_value(normalized_value, explicit_profile_values):
-                    print(f"⚠️ 低置信度值已清空: {target_key} -> {normalized_value}")
-                    normalized_value = ""
+            normalized_value = "" if value is None else str(value).strip()
+            if normalized_value and not _is_explicit_value(normalized_value, explicit_profile_values):
+                print(f"⚠️ 低置信度值已清空: {target_key} -> {normalized_value}")
+                normalized_value = ""
 
-                fill_data[target_key] = normalized_value
-                cell.text = normalized_value
-                for p in cell.paragraphs:
-                    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            fill_data[target_key] = normalized_value
+            cell.text = normalized_value
+            for p in cell.paragraphs:
+                p.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
-                # 检查是否为空值
-                if not normalized_value:
-                    # 使用 target_key 进行 lookup，因为 placeholder_info 的 key 格式是 {1}
-                    header_info = placeholder_info.get(target_key, {})
-                    header = header_info.get('header', '')
-                    if header:
-                        # 有表头，直接使用表头作为字段名
-                        missing_fields.append(header)
-                    else:
-                        # 没有表头，从 placeholder_info 获取位置信息
-                        if target_key in placeholder_info:
-                            pos_info = placeholder_info[target_key]
-                            placeholder_needs_ai_inference[target_key] = {
-                                "table_index": pos_info.get("table_index", 0),
-                                "row_index": pos_info.get("row_index", 0),
-                                "col_index": pos_info.get("col_index", 0)
-                            }
-                    print(f"⚠️ 识别到缺失字段: {header if header else target_key} (占位符: {target_key})")
+            if not normalized_value:
+                register_missing(target_key)
+
+    # AI 未返回或未命中的占位符统一视为缺失，避免保留 {n} 标签
+    for target_key, cell in placeholder_map.items():
+        if target_key in resolved_placeholders:
+            continue
+        cell.text = ""
+        for p in cell.paragraphs:
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        fill_data[target_key] = ""
+        register_missing(target_key)
 
     # 5. 如果有无表头的缺失字段，用 AI 推断字段名称
     if placeholder_needs_ai_inference:
@@ -695,7 +711,11 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
             "\n".join(markdown_lines),
             normalized_user_info_text
         )
-        missing_fields.extend(inferred_fields)
+        for field in inferred_fields:
+            candidate = str(field).strip()
+            if candidate and candidate not in missing_fields_seen:
+                missing_fields.append(candidate)
+                missing_fields_seen.add(candidate)
 
     print(f"📋 缺失字段列表: {missing_fields}")
 
