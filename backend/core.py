@@ -547,6 +547,72 @@ def get_modelscope_response(user_info, markdown_context):
         print(f"❌ Error during AI inference: {e}")
         return {}
 
+def _get_table_default_font(table):
+    """获取表格的默认字体格式（从第一个有格式的非空单元格提取）"""
+    default_font_name = None
+    default_font_size = None
+    for row in table.rows:
+        for cell in row.cells:
+            for paragraph in cell.paragraphs:
+                if paragraph.runs:
+                    run = paragraph.runs[0]
+                    if run.font.name:
+                        default_font_name = run.font.name
+                    if run.font.size:
+                        default_font_size = run.font.size
+                    if default_font_name or default_font_size:
+                        return default_font_name, default_font_size
+    return default_font_name, default_font_size
+
+
+def _replace_cell_text_preserve_format(cell, new_text, default_font_name=None, default_font_size=None):
+    """
+    替换单元格文本，保持原有格式。
+    借鉴 fill_template.py 的思路：保存 run 格式 → 删除旧 run → 创建新 run → 恢复格式。
+    """
+    for paragraph in cell.paragraphs:
+        # 1. 保存第一个 run 的格式
+        first_run_format = None
+        if paragraph.runs:
+            first_run = paragraph.runs[0]
+            first_run_format = {
+                'name': first_run.font.name,
+                'size': first_run.font.size,
+                'bold': first_run.font.bold,
+                'italic': first_run.font.italic,
+                'underline': first_run.font.underline,
+            }
+
+        # 2. 删除所有 run（保留段落本身的属性如对齐方式）
+        for run in list(paragraph.runs):
+            r = run._element
+            r.getparent().remove(r)
+
+        # 3. 添加新 run 并恢复格式
+        new_run = paragraph.add_run(new_text)
+
+        if first_run_format:
+            if first_run_format['name']:
+                new_run.font.name = first_run_format['name']
+            if first_run_format['size']:
+                new_run.font.size = first_run_format['size']
+            if first_run_format['bold'] is not None:
+                new_run.font.bold = first_run_format['bold']
+            if first_run_format['italic'] is not None:
+                new_run.font.italic = first_run_format['italic']
+            if first_run_format['underline'] is not None:
+                new_run.font.underline = first_run_format['underline']
+        elif default_font_name or default_font_size:
+            # 没有原格式时使用表格默认格式
+            if default_font_name:
+                new_run.font.name = default_font_name
+            if default_font_size:
+                new_run.font.size = default_font_size
+
+        # 只处理第一个段落
+        break
+
+
 def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, prefilled_data=None, return_metadata=False):
     """
     填充表单
@@ -588,11 +654,15 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
     # 2. 标记空单元格并构建 Markdown 上下文 (集成 smart.py 核心思路)
     placeholder_map = {}
     placeholder_info = {}  # 存储占位符对应的表头信息
+    table_default_fonts = {}  # 存储每个表格的默认字体 {t_idx: (font_name, font_size)}
     counter = 1
     markdown_lines = []
 
     for t_idx, table in enumerate(doc.tables):
         markdown_lines.append(f"\n### 表格 {t_idx + 1}\n")
+
+        # 提取表格默认字体（用于空单元格的格式回退）
+        table_default_fonts[t_idx] = _get_table_default_font(table)
 
         # 预计算当前表格的最大列数
         max_cols = max(len(row.cells) for row in table.rows) if table.rows else 0
@@ -616,7 +686,12 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
                 if not text:
                     # 为空单元格创建占位符
                     tag = f"{{{counter}}}"
-                    cell.text = tag
+                    # 使用格式保持的方式写入占位符标记
+                    _replace_cell_text_preserve_format(
+                        cell, tag,
+                        table_default_fonts[t_idx][0],
+                        table_default_fonts[t_idx][1]
+                    )
                     placeholder_map[tag] = cell
                     # 获取表头信息
                     header = ""
@@ -694,7 +769,7 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
                 }
         print(f"⚠️ 识别到缺失字段: {header if header else target_key} (占位符: {target_key})")
 
-    # 4. 填充数据
+    # 4. 填充数据（使用格式保持的替换方式）
     for key, value in list(fill_data.items()):
         # 兼容 AI 返回 "1" 而不是 "{1}" 的情况
         target_key = key if key.startswith("{") else f"{{{key}}}"
@@ -709,9 +784,10 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
                 normalized_value = ""
 
             fill_data[target_key] = normalized_value
-            cell.text = normalized_value
-            for p in cell.paragraphs:
-                p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            # 查找该单元格所属表格的默认字体
+            cell_table_idx = placeholder_info.get(target_key, {}).get("table_index", 1) - 1
+            def_font = table_default_fonts.get(cell_table_idx, (None, None))
+            _replace_cell_text_preserve_format(cell, normalized_value, def_font[0], def_font[1])
 
             if not normalized_value:
                 register_missing(target_key)
@@ -720,9 +796,9 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
     for target_key, cell in placeholder_map.items():
         if target_key in resolved_placeholders:
             continue
-        cell.text = ""
-        for p in cell.paragraphs:
-            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+        cell_table_idx = placeholder_info.get(target_key, {}).get("table_index", 1) - 1
+        def_font = table_default_fonts.get(cell_table_idx, (None, None))
+        _replace_cell_text_preserve_format(cell, "", def_font[0], def_font[1])
         fill_data[target_key] = ""
         register_missing(target_key)
 
