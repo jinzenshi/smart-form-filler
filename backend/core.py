@@ -540,7 +540,7 @@ def get_modelscope_response(user_info, markdown_context):
         print(f"❌ Error during AI inference: {e}")
         return {}
 
-def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, prefilled_data=None):
+def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, prefilled_data=None, return_metadata=False):
     """
     填充表单
 
@@ -638,6 +638,8 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
         doc.save(out)
         output_bytes = out.getvalue()
         if return_fill_data:
+            if return_metadata:
+                return output_bytes, {}, [], {"low_confidence_fields": []}
             return output_bytes, {}, []
         return output_bytes
 
@@ -655,6 +657,18 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
     missing_fields_seen = set()
     placeholder_needs_ai_inference = {}
     resolved_placeholders = set()
+    low_confidence_keys = set()
+
+    def get_display_field_name(target_key, inferred_fields_map=None):
+        header_info = placeholder_info.get(target_key, {})
+        header = (header_info.get("header") or "").strip()
+        if header:
+            return header
+        if inferred_fields_map and target_key in inferred_fields_map:
+            candidate = str(inferred_fields_map[target_key]).strip()
+            if candidate:
+                return candidate
+        return target_key
 
     def register_missing(target_key):
         header_info = placeholder_info.get(target_key, {})
@@ -684,6 +698,7 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
             normalized_value = "" if value is None else str(value).strip()
             if normalized_value and not _is_explicit_value(normalized_value, explicit_profile_values):
                 print(f"⚠️ 低置信度值已清空: {target_key} -> {normalized_value}")
+                low_confidence_keys.add(target_key)
                 normalized_value = ""
 
             fill_data[target_key] = normalized_value
@@ -704,26 +719,48 @@ def fill_form(docx_bytes, user_info_text, photo_bytes, return_fill_data=False, p
         fill_data[target_key] = ""
         register_missing(target_key)
 
+    inferred_fields_map = {}
+
     # 5. 如果有无表头的缺失字段，用 AI 推断字段名称
     if placeholder_needs_ai_inference:
+        placeholder_keys = list(placeholder_needs_ai_inference.keys())
         inferred_fields = infer_field_names_with_ai(
             placeholder_needs_ai_inference,
             "\n".join(markdown_lines),
             normalized_user_info_text
         )
+        inferred_fields_map = {
+            key: inferred_fields[idx]
+            for idx, key in enumerate(placeholder_keys)
+            if idx < len(inferred_fields)
+        }
         for field in inferred_fields:
             candidate = str(field).strip()
             if candidate and candidate not in missing_fields_seen:
                 missing_fields.append(candidate)
                 missing_fields_seen.add(candidate)
 
+    low_confidence_fields = []
+    low_confidence_seen = set()
+    for target_key in low_confidence_keys:
+        display_name = get_display_field_name(target_key, inferred_fields_map)
+        if display_name and display_name not in low_confidence_seen:
+            low_confidence_fields.append(display_name)
+            low_confidence_seen.add(display_name)
+
     print(f"📋 缺失字段列表: {missing_fields}")
+    if low_confidence_fields:
+        print(f"📉 低置信度字段列表: {low_confidence_fields}")
 
     out = io.BytesIO()
     doc.save(out)
     output_bytes = out.getvalue()
 
     if return_fill_data:
+        if return_metadata:
+            return output_bytes, fill_data, missing_fields, {
+                "low_confidence_fields": low_confidence_fields
+            }
         return output_bytes, fill_data, missing_fields
     return output_bytes
 

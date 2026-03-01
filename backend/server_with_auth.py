@@ -436,7 +436,14 @@ async def process(
         # 优化：减少重复推理 - 预览时返回 fill_data，下载时可以使用
         if preview == 'true':
             # 预览模式：返回填充数据
-            output_bytes, returned_fill_data, missing_fields = fill_form(docx_bytes, user_info_text, None, return_fill_data=True)
+            output_bytes, returned_fill_data, missing_fields, metadata = fill_form(
+                docx_bytes,
+                user_info_text,
+                None,
+                return_fill_data=True,
+                return_metadata=True,
+            )
+            low_confidence_fields = metadata.get("low_confidence_fields", []) if isinstance(metadata, dict) else []
 
             import base64
             output_base64 = base64.b64encode(output_bytes).decode('utf-8')
@@ -448,6 +455,8 @@ async def process(
                 message = "预览数据生成成功，请在前端查看预览效果"
 
             print(f"📋 返回给前端的 missing_fields: {missing_fields}")
+            if low_confidence_fields:
+                print(f"📉 返回给前端的 low_confidence_fields: {low_confidence_fields}")
 
             return {
                 "success": True,
@@ -456,6 +465,7 @@ async def process(
                 "data": output_base64,
                 "fill_data": json.dumps(returned_fill_data),  # 返回 JSON 字符串
                 "missing_fields": missing_fields,  # 返回缺失字段列表
+                "low_confidence_fields": low_confidence_fields,
                 "message": message
             }
         else:

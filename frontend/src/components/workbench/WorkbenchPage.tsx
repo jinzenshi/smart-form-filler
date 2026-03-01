@@ -99,6 +99,7 @@ export function WorkbenchPage() {
 
   // 补充信息状态 (Step 3)
   const [missingFields, setMissingFields] = useState<string[]>([])
+  const [lowConfidenceFields, setLowConfidenceFields] = useState<string[]>([])
   const [supplementaryInfo, setSupplementaryInfo] = useState('')
   const [analyzeLoading, setAnalyzeLoading] = useState(false)
 
@@ -108,6 +109,7 @@ export function WorkbenchPage() {
 
   // 是否可以预览
   const canPreview = (docxFile || defaultTemplateBlob) && (userInfo.trim() || infoFile)
+  const hasSupplementFields = missingFields.length > 0 || lowConfidenceFields.length > 0
 
   function handleZoomIn() {
     setPreviewScale((prev) => Math.min(2, Number((prev + 0.1).toFixed(2))))
@@ -246,8 +248,14 @@ export function WorkbenchPage() {
       if (response.success) {
         setProgressStep(3)
 
-        if (response.missing_fields && response.missing_fields.length > 0) {
-          setMissingFields(response.missing_fields)
+        const responseMissingFields = response.missing_fields || []
+        const responseLowConfidenceFields = response.low_confidence_fields || []
+        const hasFieldsNeedSupplement =
+          responseMissingFields.length > 0 || responseLowConfidenceFields.length > 0
+
+        if (hasFieldsNeedSupplement) {
+          setMissingFields(responseMissingFields)
+          setLowConfidenceFields(responseLowConfidenceFields)
           setSupplementaryInfo('')
           setPreviewBlob(null)
           setCurrentStep(3)
@@ -255,6 +263,8 @@ export function WorkbenchPage() {
         } else if (response.data) {
           setPreviewBlob(base64ToBlob(response.data))
           setPreviewScale(1)
+          setMissingFields([])
+          setLowConfidenceFields([])
           setCurrentStep(4)
         } else {
           toast.error(response.message || '预览数据为空，请重试')
@@ -272,8 +282,13 @@ export function WorkbenchPage() {
 
   // 生成缺失字段的 placeholder 提示
   function generateMissingFieldsPlaceholder(): string {
-    if (missingFields.length === 0) return ''
-    return missingFields.map(field => `${field}: `).join('\n')
+    const combinedFields = [
+      ...missingFields,
+      ...lowConfidenceFields.filter((field) => !missingFields.includes(field))
+    ]
+
+    if (combinedFields.length === 0) return ''
+    return combinedFields.map((field) => `${field}: `).join('\n')
   }
 
   // 从第二步开始填充，分析缺失字段并跳转到第三步
@@ -292,6 +307,7 @@ export function WorkbenchPage() {
       if (response.success && response.missing_fields && response.missing_fields.length > 0) {
         // 有缺失字段，跳转到 Step 3
         setMissingFields(response.missing_fields)
+        setLowConfidenceFields([])
         setSupplementaryInfo('')
         setCurrentStep(3)
       } else {
@@ -328,8 +344,14 @@ export function WorkbenchPage() {
       if (response.success) {
         setProgressStep(3)
 
-        if (response.missing_fields && response.missing_fields.length > 0) {
-          setMissingFields(response.missing_fields)
+        const responseMissingFields = response.missing_fields || []
+        const responseLowConfidenceFields = response.low_confidence_fields || []
+        const hasFieldsNeedSupplement =
+          responseMissingFields.length > 0 || responseLowConfidenceFields.length > 0
+
+        if (hasFieldsNeedSupplement) {
+          setMissingFields(responseMissingFields)
+          setLowConfidenceFields(responseLowConfidenceFields)
           setPreviewBlob(null)
           setCurrentStep(3)
           toast.info(response.message || '仍有字段缺失，请继续补充后再生成')
@@ -337,6 +359,7 @@ export function WorkbenchPage() {
           setPreviewBlob(base64ToBlob(response.data))
           setPreviewScale(1)
           setMissingFields([])  // 清空缺失字段
+          setLowConfidenceFields([])
           setCurrentStep(4)  // 跳转到 Step 4
         } else {
           toast.error(response.message || '预览数据为空，请重试')
@@ -413,6 +436,7 @@ export function WorkbenchPage() {
     setPreviewBlob(null)
     setPreviewScale(1)
     setMissingFields([])
+    setLowConfidenceFields([])
     setSupplementaryInfo('')
   }
 
@@ -424,8 +448,8 @@ export function WorkbenchPage() {
   }
 
   function goToStep3() {
-    // 只有存在缺失字段时才允许跳转到 Step 3
-    if (missingFields.length > 0) {
+    // 只有存在可补充字段时才允许跳转到 Step 3
+    if (missingFields.length > 0 || lowConfidenceFields.length > 0) {
       setCurrentStep(3)
     }
   }
@@ -491,7 +515,7 @@ export function WorkbenchPage() {
             <span className="wizard-step-label">上传报名表</span>
           </div>
           <div className={`wizard-connector ${currentStep >= 3 ? 'active' : ''}`}></div>
-          <div className={`wizard-step ${currentStep >= 3 ? 'active' : ''} ${currentStep > 3 ? 'completed' : ''}`} onClick={missingFields.length > 0 ? goToStep3 : undefined}>
+          <div className={`wizard-step ${currentStep >= 3 ? 'active' : ''} ${currentStep > 3 ? 'completed' : ''}`} onClick={hasSupplementFields ? goToStep3 : undefined}>
             <div className="wizard-step-icon">{currentStep > 3 ? '✓' : '3'}</div>
             <span className="wizard-step-label">补充信息</span>
           </div>
@@ -635,10 +659,21 @@ export function WorkbenchPage() {
                       </div>
                       <div className="supplement-hint">
                         <span className="hint-icon">💡</span>
-                        <p>以下字段未能从您的个人信息中自动匹配，请补充：</p>
+                        <p>以下字段未能可靠匹配，请补充后再生成：</p>
                       </div>
 
-                      {missingFields.length > 0 ? (
+                      {lowConfidenceFields.length > 0 && (
+                        <div className="low-confidence-panel">
+                          <p className="low-confidence-title">低置信度字段（已自动留空，避免误填）</p>
+                          <div className="low-confidence-list">
+                            {lowConfidenceFields.map((field) => (
+                              <span key={field} className="low-confidence-tag">{field}</span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {hasSupplementFields ? (
                         <div className="supplement-form">
                           <textarea
                             value={supplementaryInfo}
@@ -666,7 +701,7 @@ export function WorkbenchPage() {
                       <Button
                         variant="primary"
                         onClick={handleConfirmSupplement}
-                        disabled={loading || (missingFields.length > 0 && !supplementaryInfo.trim())}
+                        disabled={loading || (hasSupplementFields && !supplementaryInfo.trim())}
                       >
                         {loading ? '处理中...' : '确认补充并生成预览'}
                       </Button>
@@ -1265,6 +1300,39 @@ export function WorkbenchPage() {
           font-size: 14px;
           color: #92400e;
           line-height: 1.5;
+        }
+
+        .low-confidence-panel {
+          margin-bottom: 16px;
+          padding: 12px 14px;
+          border: 1px solid #fb923c;
+          background: linear-gradient(135deg, rgba(251, 146, 60, 0.08) 0%, rgba(254, 215, 170, 0.18) 100%);
+          border-radius: 8px;
+        }
+
+        .low-confidence-title {
+          margin: 0 0 10px 0;
+          font-size: 13px;
+          font-weight: 600;
+          color: #9a3412;
+        }
+
+        .low-confidence-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .low-confidence-tag {
+          display: inline-flex;
+          align-items: center;
+          padding: 4px 10px;
+          border-radius: 999px;
+          border: 1px solid #fdba74;
+          background: rgba(255, 255, 255, 0.8);
+          color: #b45309;
+          font-size: 12px;
+          font-weight: 500;
         }
 
         .supplement-form {

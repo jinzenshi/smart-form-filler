@@ -9,6 +9,7 @@ interface ProcessResult {
   blob?: Blob
   balance?: number
   missing_fields?: string[]
+  low_confidence_fields?: string[]
   fill_data?: string
 }
 
