@@ -16,7 +16,8 @@ from models import init_db, User, OperationLog, Feedback, FileStorage, SessionLo
 from auth import (
     get_db, hash_password, verify_password, create_user,
     authenticate_user, log_operation, get_current_user, is_admin,
-    generate_token, security, create_temporary_account, check_user_expired
+    generate_token, security, create_temporary_account, check_user_expired,
+    _decode_token
 )
 from supabase_client import upload_file_to_supabase, delete_file_from_supabase, generate_unique_filename
 
@@ -204,17 +205,25 @@ async def get_optional_current_user(
         if not token or len(token) < 3:
             return None
 
-        # token格式: username:timestamp:random
+        # 1. 首先尝试使用 JWT 格式解析
+        try:
+            payload = _decode_token(token)
+            username = str(payload.get("sub", "")).strip()
+            user = db.query(User).filter(User.username == username).first()
+            if user:
+                return user
+        except Exception:
+            pass
+
+        # 2. 兼容旧版 token格式: username:timestamp:random
         parts = token.split(':')
-        if len(parts) != 3:
-            return None
-
-        username = parts[0]
-        user = db.query(User).filter(User.username == username).first()
-        if not user:
-            return None
-
-        return user
+        if len(parts) == 3:
+            username = parts[0]
+            user = db.query(User).filter(User.username == username).first()
+            if user:
+                return user
+        
+        return None
     except:
         return None
 
@@ -738,13 +747,24 @@ async def submit_feedback(
         if not token:
             raise HTTPException(status_code=401, detail="缺少认证token")
 
-        # 手动解析token并验证用户
-        parts = token.split(':')
-        if len(parts) != 3:
-            raise HTTPException(status_code=401, detail="无效token格式")
+        user = None
+        # 1. 优先尝试 JWT 格式解析
+        try:
+            payload = _decode_token(token)
+            username = str(payload.get("sub", "")).strip()
+            user = db.query(User).filter(User.username == username).first()
+        except Exception:
+            pass
+        
+        # 2. 兼容旧验证逻辑
+        if not user:
+            parts = token.split(':')
+            if len(parts) != 3:
+                raise HTTPException(status_code=401, detail="无效token格式")
 
-        username = parts[0]
-        user = db.query(User).filter(User.username == username).first()
+            username = parts[0]
+            user = db.query(User).filter(User.username == username).first()
+            
         if not user:
             raise HTTPException(status_code=401, detail="用户不存在")
 
