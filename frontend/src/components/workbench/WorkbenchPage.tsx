@@ -352,8 +352,10 @@ export function WorkbenchPage() {
       setProgressStep(3)
       setLatestFillData(response.fill_data || '')
 
-      const responseMissingFields = response.missing_fields || []
-      const responseLowConfidenceFields = response.low_confidence_fields || []
+      // Filter out internal {n} placeholder tags - they are meaningless to users
+      const placeholderPattern = /^{\d+}$/
+      const responseMissingFields = (response.missing_fields || []).filter((f: string) => !placeholderPattern.test(f))
+      const responseLowConfidenceFields = (response.low_confidence_fields || []).filter((f: string) => !placeholderPattern.test(f))
       const hasFieldsNeedSupplement =
         responseMissingFields.length > 0 || responseLowConfidenceFields.length > 0
 
@@ -712,11 +714,11 @@ export function WorkbenchPage() {
                         <p>以下字段未能可靠匹配，请补充后再生成：</p>
                       </div>
 
-                      {lowConfidenceFields.length > 0 && (
+                      {lowConfidenceFields.filter(f => !/^{\d+}$/.test(f)).length > 0 && (
                         <div className="low-confidence-panel">
                           <p className="low-confidence-title">低置信度字段（已自动留空，避免误填）</p>
                           <div className="low-confidence-list">
-                            {lowConfidenceFields.map((field) => (
+                            {lowConfidenceFields.filter(f => !/^{\d+}$/.test(f)).map((field) => (
                               <span key={field} className="low-confidence-tag">{field}</span>
                             ))}
                           </div>
@@ -725,13 +727,12 @@ export function WorkbenchPage() {
 
                       {hasSupplementFields ? (
                         <div className="supplement-form flex flex-col gap-4 mt-6">
-                          {Array.from(new Set([...missingFields, ...lowConfidenceFields])).map((field) => {
+                          {Array.from(new Set([...missingFields, ...lowConfidenceFields])).filter(f => !/^{\d+}$/.test(f)).map((field) => {
                             const escapedField = field.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                             const regex = new RegExp(`^\\s*${escapedField}\\s*:\\s*(.*)$`, 'm');
                             const match = supplementaryInfo.match(regex);
                             const val = match ? match[1] : '';
-                            const isUnknown = field.match(/^{\d+}$/);
-                            const displayField = isUnknown ? `未能识别的表格项（建议在第四步查看生成效果后，如果文档中这个位置空缺再填写）` : field;
+                            const displayField = field;
 
                             return (
                               <div key={field} className="flex flex-col gap-2">
