@@ -80,6 +80,7 @@ export function WorkbenchPage() {
 
   // 预览状态
   const [previewBlob, setPreviewBlob] = useState<Blob | null>(null)
+  const [previewScale, setPreviewScale] = useState(1)
   const [loading, setLoading] = useState(false)
   const [progressStep, setProgressStep] = useState(-1)
 
@@ -107,6 +108,18 @@ export function WorkbenchPage() {
 
   // 是否可以预览
   const canPreview = (docxFile || defaultTemplateBlob) && (userInfo.trim() || infoFile)
+
+  function handleZoomIn() {
+    setPreviewScale((prev) => Math.min(2, Number((prev + 0.1).toFixed(2))))
+  }
+
+  function handleZoomOut() {
+    setPreviewScale((prev) => Math.max(0.7, Number((prev - 0.1).toFixed(2))))
+  }
+
+  function handleZoomReset() {
+    setPreviewScale(1)
+  }
 
   // 初始化
   useEffect(() => {
@@ -241,6 +254,7 @@ export function WorkbenchPage() {
           toast.info(response.message || '检测到部分字段缺失，请先补充信息')
         } else if (response.data) {
           setPreviewBlob(base64ToBlob(response.data))
+          setPreviewScale(1)
           setCurrentStep(4)
         } else {
           toast.error(response.message || '预览数据为空，请重试')
@@ -321,6 +335,7 @@ export function WorkbenchPage() {
           toast.info(response.message || '仍有字段缺失，请继续补充后再生成')
         } else if (response.data) {
           setPreviewBlob(base64ToBlob(response.data))
+          setPreviewScale(1)
           setMissingFields([])  // 清空缺失字段
           setCurrentStep(4)  // 跳转到 Step 4
         } else {
@@ -396,6 +411,7 @@ export function WorkbenchPage() {
   function goToStep1() {
     setCurrentStep(1)
     setPreviewBlob(null)
+    setPreviewScale(1)
     setMissingFields([])
     setSupplementaryInfo('')
   }
@@ -693,9 +709,21 @@ export function WorkbenchPage() {
                   预览结果
                 </h2>
                 {previewBlob && (
-                  <Button variant="primary" size="sm" onClick={handleDownload} disabled={loading}>
-                    下载文档
-                  </Button>
+                  <div className="preview-toolbar">
+                    <Button variant="secondary" size="sm" onClick={handleZoomOut} disabled={loading || previewScale <= 0.7}>
+                      缩小
+                    </Button>
+                    <span className="preview-scale-text">{Math.round(previewScale * 100)}%</span>
+                    <Button variant="secondary" size="sm" onClick={handleZoomIn} disabled={loading || previewScale >= 2}>
+                      放大
+                    </Button>
+                    <Button variant="secondary" size="sm" onClick={handleZoomReset} disabled={loading}>
+                      100%
+                    </Button>
+                    <Button variant="primary" size="sm" onClick={handleDownload} disabled={loading}>
+                      下载文档
+                    </Button>
+                  </div>
                 )}
               </div>
 
@@ -722,6 +750,7 @@ export function WorkbenchPage() {
                 {previewBlob ? (
                   <LazyDocxPreview
                     blob={previewBlob}
+                    scale={previewScale}
                     onRendered={() => { }}
                     onError={(msg) => toast.error(msg)}
                   />
@@ -911,6 +940,21 @@ export function WorkbenchPage() {
           font-size: 18px;
           font-weight: 600;
           margin: 0;
+        }
+
+        .preview-toolbar {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+          justify-content: flex-end;
+        }
+
+        .preview-scale-text {
+          min-width: 48px;
+          text-align: center;
+          font-size: 13px;
+          color: #4b5563;
         }
 
         .panel-icon {
@@ -1376,6 +1420,13 @@ export function WorkbenchPage() {
           box-sizing: border-box;
         }
 
+        .docx-preview-zoom-layer {
+          width: max-content;
+          min-width: max-content;
+          transition: transform 0.18s ease;
+          will-change: transform;
+        }
+
         /* --- 核心修复：强制覆盖插件生成的容器样式 --- */
 
         /* 1. 强制 wrapper 占满宽度或根据内容伸展，并垂直居中其内容 */
@@ -1628,6 +1679,17 @@ export function WorkbenchPage() {
             font-size: 16px;
           }
 
+          .preview-toolbar {
+            width: 100%;
+            justify-content: flex-start;
+            margin-top: 8px;
+            gap: 6px;
+          }
+
+          .preview-scale-text {
+            min-width: 44px;
+          }
+
           .step-header h3,
           .supplement-header h3 {
             font-size: 18px;
@@ -1656,6 +1718,11 @@ export function WorkbenchPage() {
           .docx-preview {
             align-items: flex-start;
             padding: 12px;
+          }
+
+          .docx-preview-zoom-layer {
+            width: max-content;
+            min-width: max-content;
           }
 
           .docx-preview-content {

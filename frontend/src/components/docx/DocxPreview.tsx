@@ -4,11 +4,12 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 
 interface DocxPreviewProps {
   blob: Blob | null
+  scale?: number
   onRendered?: () => void
   onError?: (error: string) => void
 }
 
-export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
+export function DocxPreview({ blob, scale = 1, onRendered, onError }: DocxPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string>()
@@ -139,10 +140,19 @@ export function DocxPreview({ blob, onRendered, onError }: DocxPreviewProps) {
     return null
   }
 
+  const zoomStyle = blob && !loading && !error
+    ? {
+        transform: `scale(${scale})`,
+        transformOrigin: 'top left',
+      }
+    : undefined
+
   return (
     <div className="docx-preview">
-      <div ref={containerRef} className="docx-preview-content">
-        {renderContent()}
+      <div className="docx-preview-zoom-layer" style={zoomStyle}>
+        <div ref={containerRef} className="docx-preview-content">
+          {renderContent()}
+        </div>
       </div>
     </div>
   )
