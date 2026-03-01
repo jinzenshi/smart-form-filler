@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { getAuthData } from '@/lib/auth-client'
-import { processDocx, analyzeMissingFields, getTokenBalance, base64ToBlob } from '@/lib/docx'
+import { processDocx, getTokenBalance, base64ToBlob } from '@/lib/docx'
 import { Button } from '@/components/ui/Button'
 import { Modal } from '@/components/ui/Modal'
 import { useToast } from '@/components/common/Toast'
@@ -101,7 +101,6 @@ export function WorkbenchPage() {
   const [missingFields, setMissingFields] = useState<string[]>([])
   const [lowConfidenceFields, setLowConfidenceFields] = useState<string[]>([])
   const [supplementaryInfo, setSupplementaryInfo] = useState('')
-  const [analyzeLoading, setAnalyzeLoading] = useState(false)
 
   // 是否可以进入下一步
   const canGoToStep2 = userInfo.trim().length > 0
@@ -324,34 +323,9 @@ export function WorkbenchPage() {
     return combinedFields.map((field) => `${field}: `).join('\n')
   }
 
-  // 从第二步开始填充，分析缺失字段并跳转到第三步
+  // 从第二步开始填充：直接走预览接口，保证与 Step 4 同一套字段判断逻辑
   async function handleStartFill() {
-    if (!canPreview) return
-
-    setAnalyzeLoading(true)
-    try {
-      const templateFile = docxFile || new File([defaultTemplateBlob!], '模板.docx', {
-        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      })
-
-      // 调用分析接口获取缺失字段
-      const response = await analyzeMissingFields(templateFile, userInfo)
-
-      if (response.success && response.missing_fields && response.missing_fields.length > 0) {
-        // 有缺失字段，跳转到 Step 3
-        setMissingFields(response.missing_fields)
-        setLowConfidenceFields([])
-        setSupplementaryInfo('')
-        setCurrentStep(3)
-      } else {
-        // 无缺失字段，直接生成预览并跳转到 Step 4
-        await handlePreview()
-      }
-    } catch (e: any) {
-      toast.error(e.message || '分析失败，请重试')
-    } finally {
-      setAnalyzeLoading(false)
-    }
+    await handlePreview()
   }
 
   // 确认补充信息后生成预览
@@ -675,9 +649,9 @@ export function WorkbenchPage() {
                       <Button
                         variant="primary"
                         onClick={handleStartFill}
-                        disabled={!canPreview || loading || analyzeLoading}
+                        disabled={!canPreview || loading}
                       >
-                        {analyzeLoading ? '分析中...' : loading ? '处理中...' : '开始填充并预览'}
+                        {loading ? '处理中...' : '开始填充并预览'}
                       </Button>
                     </div>
                   </div>
