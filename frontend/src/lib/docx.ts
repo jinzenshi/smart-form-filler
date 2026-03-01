@@ -28,7 +28,7 @@ export function base64ToBlob(base64: string, mime = 'application/vnd.openxmlform
 
 export async function processDocx(templateFile: File, userInfo: string, preview = true): Promise<ProcessResult> {
   const form = new FormData()
-  form.append('docx_file', templateFile)
+  form.append('docx', templateFile)
   form.append('user_info_text', userInfo)
   form.append('preview', preview ? 'true' : 'false')
 
@@ -58,7 +58,7 @@ export async function processDocx(templateFile: File, userInfo: string, preview 
 
 export async function analyzeMissingFields(templateFile: File, userInfo: string): Promise<{ success: boolean; missing_fields?: string[]; message?: string }> {
   const form = new FormData()
-  form.append('docx_file', templateFile)
+  form.append('docx', templateFile)
   form.append('user_info_text', userInfo)
 
   const res = await fetch(`${API_BASE}/api/analyze-missing`, {

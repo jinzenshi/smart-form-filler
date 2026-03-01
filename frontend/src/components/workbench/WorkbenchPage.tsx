@@ -234,6 +234,9 @@ export function WorkbenchPage() {
         setProgressStep(3)
         if (response.data) {
           setPreviewBlob(base64ToBlob(response.data))
+          setCurrentStep(4)
+        } else {
+          toast.error(response.message || '预览数据为空，请重试')
         }
       } else {
         toast.error(response.message || '处理失败')
@@ -307,6 +310,8 @@ export function WorkbenchPage() {
           setPreviewBlob(base64ToBlob(response.data))
           setMissingFields([])  // 清空缺失字段
           setCurrentStep(4)  // 跳转到 Step 4
+        } else {
+          toast.error(response.message || '预览数据为空，请重试')
         }
       } else {
         toast.error(response.message || '处理失败')
